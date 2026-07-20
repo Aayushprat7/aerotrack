@@ -6,101 +6,138 @@
     <link href="/node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
   </head>
   <body class="bg-light">
-    <div class ="container my-5">
+    <div class="container my-5">
       <header class="pb-3 mb-4 border-bottom">
         <span class="fs-4 fw-bold text-primary">Aerotrack System</span>
       </header>
       
+      <!-- Flight Registration Input Form -->
       <div class="card p-4 mb-4 shadow-sm">
-        <h5 class="mb3">Log Flight Profile</h5>
+        <h5 class="mb-3">Log Flight Profile</h5>
         <form id="flight-form" class="row g-3">
-                <div class="col-md-4">
-                    <input type="text" id="flightNum" class="form-control" placeholder="Flight ID (e.g., AI-302)" required>
-                </div>
-                <div class="col-md-4">
-                    <input type="text" id="destination" class="form-control" placeholder="Destination" required>
-                </div>
-                <div class="col-md-4">
-                    <button type="submit" class="btn btn-primary w-100">Register Asset</button>
-                </div>
-        </form>
+  <div class="col-md-3">
+    <input type="text" id="flightNum" class="form-control" placeholder="Flight ID (e.g., AI-302)" required>
+  </div>
+  <div class="col-md-3">
+    <input type="text" id="destination" class="form-control" placeholder="Destination" required>
+  </div>
+  <div class="col-md-3">
+    <select id="statusSelect" class="form-select">
+      <option value="On Schedule">On Schedule</option>
+      <option value="Boarding">Boarding</option>
+      <option value="Delayed">Delayed</option>
+    </select>
+  </div>
+  <div class="col-md-3">
+    <button type="submit" class="btn btn-primary w-100">Register Asset</button>
+  </div>
+</form>
       </div>
+
+      <!-- Active Operational Logs Matrix -->
       <div class="card p-4 shadow-sm">
-    <h5 class="mb-3">Active Pipeline Logs Matrix</h5>
-    <div class="table-responsive">
-        <table class="table align-middle">
+        <h5 class="mb-3">Active Pipeline Logs Matrix</h5>
+        <div class="table-responsive">
+          <table class="table align-middle">
             <thead>
-                <tr>
-                    <th>Flight ID</th>
-                    <th>Target Destination</th>
-                </tr>
+              <tr>
+                <th>Flight ID</th>
+                <th>Target Destination</th>
+                <th>Status</th>
+                <th></th> <!-- Visual layout anchor for the alignment grid -->
+              </tr>
             </thead>
             <tbody id="flight-table-data">
-                </tbody>
-        </table>
-    </div>
-</div>
+              <!-- Dynamically populated by JavaScript rendering engine -->
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
     
-  </body>
-  <script>
-        // 1. Capture the Form element from our webpage HTML layout
-        const flightForm = document.getElementById('flight-form');
+    <script>
+      // 1. Capture the Form element from our webpage HTML layout
+      const flightForm = document.getElementById('flight-form');
 
-        // 2. Intercept the submit click event
-        flightForm.addEventListener('submit', async (event) => {
-            event.preventDefault(); // Prevents the browser from reloading the page automatically
+      // 2. Intercept the submit click event
+      flightForm.addEventListener('submit', async (event) => {
+        event.preventDefault(); // Prevents the browser from reloading the page automatically
 
-            // 3. Extract the exact text strings from our input fields
-            const flightNumber = document.getElementById('flightNum').value;
-            const destination = document.getElementById('destination').value;
+        // 3. Extract the exact text strings from our input fields
+        const flightNumber = document.getElementById('flightNum').value;
+const destination = document.getElementById('destination').value;
+const status = document.getElementById('statusSelect').value; // Get the dropdown value
 
-            // 4. Bundle the raw inputs into a clean JavaScript object configuration
-            const formData = {
-                flightNumber: flightNumber,
-                destination: destination
-            };
+const formData = {
+  flightNumber: flightNumber,
+  destination: destination,
+  status: status // Pass it to the backend packet
+};
 
-            // 5. Use the Fetch API to transmit this data bundle to our POST route
-            await fetch('/api/flights', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData) // Converts our object into a raw text string for transmission
-            });
-
-            // 6. Clear the text boxes so the user can enter another record
-            flightForm.reset();
-            // Add this line at the very bottom inside your form submit event listener block
-loadFlights();
-            console.log("Data packet successfully dispatched to backend engine.");
+        // 5. Use the Fetch API to transmit this data bundle to our POST route
+        await fetch('/api/flights', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData) // Converts our object into a raw text string for transmission
         });
-        // 1. Function to fetch data from backend and render it onto the table grid
-async function loadFlights() {
-    // Run a GET network request to fetch our flights array data bundle
-    const response = await fetch('/api/flights');
-    const flights = await response.json(); // Parse the incoming JSON text back into a usable list array
 
-    // Target our empty <tbody> element where structural rows belong
-    const tableBody = document.getElementById('flight-table-data');
-    
-    // Clear out any old rows so we don't duplicate logs on the screen
-    tableBody.innerHTML = '';
+        // 6. Clear the text boxes so the user can enter another record
+        flightForm.reset();
+        
+        // 7. Refresh the UI grid matrix immediately
+        loadFlights();
+        console.log("Data packet successfully dispatched to backend engine.");
+      });
 
-    // 2. Loop through our flights array system data
-    flights.forEach(flight => {
-        // Construct a clean HTML layout string row structure for each log profile
-        const rowHTML = `
-            <tr>
-                <td class="fw-bold text-uppercase">${flight.flightNumber}</td>
-                <td>${flight.destination}</td>
-            </tr>
-        `;
-        // Inject this new row block directly into the HTML table structure
-        tableBody.innerHTML += rowHTML;
-    });
-}
+      // 8. Function to fetch data from backend and render it onto the table grid
+      async function loadFlights() {
+        const response = await fetch('/api/flights');
+        const flights = await response.json(); 
 
-// 3. Trigger this function immediately when the web page first turns on in the browser
-loadFlights();
+        const tableBody = document.getElementById('flight-table-data');
+        tableBody.innerHTML = '';
+
+        flights.forEach(flight => {
+  // Determine badge color dynamically based on data state
+  let badgeColor = 'bg-success'; // default Green for On Schedule
+  if (flight.status === 'Delayed') badgeColor = 'bg-danger'; // Red
+  if (flight.status === 'Boarding') badgeColor = 'bg-warning text-dark'; // Yellow
+
+  const rowHTML = `
+    <tr>
+      <td class="fw-bold text-uppercase">${flight.flightNumber}</td>
+      <td>${flight.destination}</td>
+      <td><span class="badge ${badgeColor}">${flight.status || 'On Schedule'}</span></td>
+      <td class="text-end">
+        <button class="btn btn-outline-danger btn-sm px-3" onclick="deleteFlight('${flight._id}')">
+          Purge Asset
+        </button>
+      </td>
+    </tr>
+  `;
+  tableBody.innerHTML += rowHTML;
+});
+      }
+
+      // 9. Function to execute the data purge network call
+      async function deleteFlight(flightId) {
+        if (confirm("Are you sure you want to purge this operational asset tracking record?")) {
+          // Run a DELETE network request directly targeting the specific item ID wildcard path
+          const response = await fetch(`/api/flights/${flightId}`, {
+            method: 'DELETE'
+          });
+
+          if (response.ok) {
+            // Refresh the screen grid matrix instantly once the database confirms removal
+            loadFlights();
+          } else {
+            alert("Error: Unable to clear records from database infrastructure cluster.");
+          }
+        }
+      }
+
+      // 10. Trigger this function immediately when the web page first turns on in the browser
+      loadFlights();
     </script>
+  </body>
 </html>

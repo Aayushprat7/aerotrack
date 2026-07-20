@@ -11,6 +11,7 @@ app.use('/node_modules', express.static(__dirname + '/node_modules'));
 const FlightSchema = new mongoose.Schema({
     flightNumber: { type: String, required: true },
     destination: { type: String, required: true },
+    status: { type: String, default: 'On Schedule' }, // Added status field
     timestamp: { type: Date, default: Date.now }
 });
 
@@ -22,10 +23,10 @@ app.post('/api/flights', async (req, res) => {
     try {
         const newFlight = new Flight({
             flightNumber: req.body.flightNumber,
-            destination: req.body.destination
+            destination: req.body.destination,
+            status: req.body.status || 'On Schedule' // Capture the status selection
         });
         
-        // .save() sends the data packet across the internet to your cloud cluster permanently
         await newFlight.save(); 
         res.status(201).json(newFlight);
     } catch (err) {
@@ -44,6 +45,21 @@ app.get('/api/flights', async (req, res) => {
     }
 });
 
+// Production DELETE Route: Remove a target flight by its unique ID
+app.delete('/api/flights/:id', async (req, res) => {
+    try {
+        // Look up the document using the ID parameter passed via the URL and wipe it out
+        const deletedFlight = await Flight.findByIdAndDelete(req.params.id);
+        
+        if (!deletedFlight) {
+            return res.status(404).json({ error: "Target operational record not found." });
+        }
+        
+        res.json({ message: "Asset log successfully purged from cluster storage.", target: deletedFlight });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 // 4. Secure Connection Hook Initialization
 const PORT = 3000;
 const CONNECTION_LINK = process.env.MONGO_URI;
