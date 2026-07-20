@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Aerotrack Control Center</title>
+    <link href="/node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+  </head>
+  <body class="bg-light">
+    <div class ="container my-5">
+      <header class="pb-3 mb-4 border-bottom">
+        <span class="fs-4 fw-bold text-primary">Aerotrack System</span>
+      </header>
+      
+      <div class="card p-4 mb-4 shadow-sm">
+        <h5 class="mb3">Log Flight Profile</h5>
+        <form id="flight-form" class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" id="flightNum" class="form-control" placeholder="Flight ID (e.g., AI-302)" required>
+                </div>
+                <div class="col-md-4">
+                    <input type="text" id="destination" class="form-control" placeholder="Destination" required>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">Register Asset</button>
+                </div>
+        </form>
+      </div>
+      <div class="card p-4 shadow-sm">
+    <h5 class="mb-3">Active Pipeline Logs Matrix</h5>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Flight ID</th>
+                    <th>Target Destination</th>
+                </tr>
+            </thead>
+            <tbody id="flight-table-data">
+                </tbody>
+        </table>
+    </div>
+</div>
+    </div>
+    
+  </body>
+  <script>
+        // 1. Capture the Form element from our webpage HTML layout
+        const flightForm = document.getElementById('flight-form');
+
+        // 2. Intercept the submit click event
+        flightForm.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Prevents the browser from reloading the page automatically
+
+            // 3. Extract the exact text strings from our input fields
+            const flightNumber = document.getElementById('flightNum').value;
+            const destination = document.getElementById('destination').value;
+
+            // 4. Bundle the raw inputs into a clean JavaScript object configuration
+            const formData = {
+                flightNumber: flightNumber,
+                destination: destination
+            };
+
+            // 5. Use the Fetch API to transmit this data bundle to our POST route
+            await fetch('/api/flights', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData) // Converts our object into a raw text string for transmission
+            });
+
+            // 6. Clear the text boxes so the user can enter another record
+            flightForm.reset();
+            // Add this line at the very bottom inside your form submit event listener block
+loadFlights();
+            console.log("Data packet successfully dispatched to backend engine.");
+        });
+        // 1. Function to fetch data from backend and render it onto the table grid
+async function loadFlights() {
+    // Run a GET network request to fetch our flights array data bundle
+    const response = await fetch('/api/flights');
+    const flights = await response.json(); // Parse the incoming JSON text back into a usable list array
+
+    // Target our empty <tbody> element where structural rows belong
+    const tableBody = document.getElementById('flight-table-data');
+    
+    // Clear out any old rows so we don't duplicate logs on the screen
+    tableBody.innerHTML = '';
+
+    // 2. Loop through our flights array system data
+    flights.forEach(flight => {
+        // Construct a clean HTML layout string row structure for each log profile
+        const rowHTML = `
+            <tr>
+                <td class="fw-bold text-uppercase">${flight.flightNumber}</td>
+                <td>${flight.destination}</td>
+            </tr>
+        `;
+        // Inject this new row block directly into the HTML table structure
+        tableBody.innerHTML += rowHTML;
+    });
+}
+
+// 3. Trigger this function immediately when the web page first turns on in the browser
+loadFlights();
+    </script>
+</html>
