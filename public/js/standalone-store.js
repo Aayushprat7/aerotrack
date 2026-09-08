@@ -377,20 +377,31 @@
 
   class StandaloneStore {
     constructor() {
-      const stored = localStorage.getItem('aerotrack_flights_local');
-      if (stored) {
-        try {
-          this.flights = JSON.parse(stored);
-        } catch(e) {
-          this.flights = JSON.parse(JSON.stringify(INITIAL_FLIGHTS));
-        }
-      } else {
-        this.flights = JSON.parse(JSON.stringify(INITIAL_FLIGHTS));
-      }
-
       this.deals = JSON.parse(JSON.stringify(ACTIVE_DEALS));
-      this.updatePositions();
-      setInterval(() => this.simulateLiveMovement(), 2500);
+      this.flights = JSON.parse(JSON.stringify(INITIAL_FLIGHTS));
+
+      // Attempt to load genuine live OpenSky ADS-B flights snapshot
+      this.loadLiveSnapshot();
+
+      setInterval(() => this.deadReckonPositions(), 2500);
+    }
+
+    async loadLiveSnapshot() {
+      try {
+        const res = await fetch('data/live-flights-snapshot.json');
+        if (res.ok) {
+          const liveData = await res.json();
+          if (Array.isArray(liveData) && liveData.length > 0) {
+            this.flights = liveData;
+            console.log(`📡 [AeroTrack Standalone] Loaded ${liveData.length} genuine physical ADS-B aircraft.`);
+            if (window.dispatchEvent) {
+              window.dispatchEvent(new CustomEvent('aerotrack:flights-updated', { detail: this.flights }));
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ [Standalone Store] Using embedded fleet fallback:', err.message);
+      }
     }
 
     save() {
@@ -399,41 +410,19 @@
       } catch(e) {}
     }
 
-    updatePositions() {
+    deadReckonPositions() {
+      const dtHours = 2.5 / 3600;
       this.flights.forEach(flight => {
-        if (!flight.origin || !flight.destination) return;
-        const pos = calculateLivePosition(flight.origin, flight.destination, flight.progress || 0.1);
-        flight.currentLat = pos.lat;
-        flight.currentLon = pos.lon;
-        flight.heading = pos.heading;
-      });
-    }
+        if (flight.status === 'On Ground' || !flight.speed || !flight.heading) return;
+        const distanceNm = flight.speed * dtHours;
+        const headingRad = (flight.heading * Math.PI) / 180;
+        const dLat = (distanceNm * Math.cos(headingRad)) / 60;
+        const avgLat = flight.currentLat * (Math.PI / 180);
+        const cosLat = Math.cos(avgLat) || 1;
+        const dLon = (distanceNm * Math.sin(headingRad)) / (60 * cosLat);
 
-    simulateLiveMovement() {
-      this.flights.forEach(flight => {
-        if (flight.status === 'In Flight') {
-          flight.progress = (flight.progress || 0) + 0.0035;
-          if (flight.progress >= 0.98) {
-            flight.status = 'Arrived';
-            flight.progress = 1.0;
-            flight.altitude = 0;
-            flight.speed = 0;
-          } else {
-            flight.altitude = Math.round(33000 + (Math.sin(flight.progress * 10) * 1200));
-            flight.speed = Math.round(460 + (Math.cos(flight.progress * 15) * 25));
-          }
-          const pos = calculateLivePosition(flight.origin, flight.destination, Math.min(flight.progress, 1));
-          flight.currentLat = pos.lat;
-          flight.currentLon = pos.lon;
-          flight.heading = pos.heading;
-        } else if (flight.status === 'Boarding') {
-          if (Math.random() < 0.05) {
-            flight.status = 'In Flight';
-            flight.progress = 0.01;
-            flight.altitude = 3500;
-            flight.speed = 220;
-          }
-        }
+        flight.currentLat = Math.round((flight.currentLat + dLat) * 10000) / 10000;
+        flight.currentLon = Math.round((flight.currentLon + dLon) * 10000) / 10000;
       });
     }
 

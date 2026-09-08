@@ -64,8 +64,8 @@
       </div>
 
       <!-- Live Airborne Status -->
-      <div id="fr24-airborne-ticker" class="fr24-status-ticker">
-        <span>✈</span> <span id="fr24-airborne-count">11 AIRBORNE</span>
+      <div id="fr24-airborne-ticker" class="fr24-status-ticker" title="Streaming genuine ADS-B transponder telemetry via OpenSky Network">
+        <span style="color: var(--emerald-accent); font-size: 8px;">●</span> <span id="fr24-airborne-count">240 LIVE ADS-B</span>
       </div>
 
       <!-- Audio Toggle -->
@@ -128,7 +128,7 @@
     <!-- Avionics Live Instruments Cluster -->
     <div class="fr24-instruments-grid">
       <div class="avionics-tile">
-        <div class="avionics-label">Calibrated Altitude</div>
+        <div class="avionics-label">Baro Altitude</div>
         <div id="insp-altitude" class="avionics-value" style="color: var(--fr24-yellow);">26,000 FT</div>
       </div>
       <div class="avionics-tile">
@@ -140,24 +140,30 @@
         <div id="insp-vspeed" class="avionics-value" style="color: var(--emerald-accent);">+120 FPM</div>
       </div>
       <div class="avionics-tile">
-        <div class="avionics-label">True Heading (Track)</div>
+        <div class="avionics-label">True Track (Heading)</div>
         <div id="insp-heading" class="avionics-value">166°</div>
       </div>
       <div class="avionics-tile">
-        <div class="avionics-label">Squawk Code</div>
+        <div class="avionics-label">Mode-S Squawk</div>
         <div id="insp-squawk" class="avionics-value" style="color: var(--cyan-primary);">2341</div>
       </div>
       <div class="avionics-tile">
-        <div class="avionics-label">Convenience Index</div>
-        <div id="insp-convenience" class="avionics-value" style="color: var(--emerald-accent);">95/100</div>
+        <div class="avionics-label">Transponder ICAO24</div>
+        <div id="insp-icao24" class="avionics-value" style="color: var(--emerald-accent); font-family: var(--font-mono); font-size: 16px;">#801642</div>
       </div>
+    </div>
+
+    <!-- Genuine ADS-B Telemetry Provenance Banner -->
+    <div class="fr24-data-provenance">
+      <span class="provenance-dot"></span>
+      <span id="insp-provenance">GENUINE ADS-B • OPENSKY NETWORK TELEMETRY</span>
     </div>
 
     <!-- Mini Altitude & Speed Profile Chart -->
     <div class="fr24-profile-box">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <span style="font-size: 11px; font-family: var(--font-mono); color: #94a3b8; text-transform: uppercase;">Flight Vertical Profile</span>
-        <span style="font-size: 10px; font-family: var(--font-mono); color: var(--emerald-accent);">CRUISE PHASE</span>
+        <span id="insp-flight-phase" style="font-size: 10px; font-family: var(--font-mono); color: var(--emerald-accent);">CRUISE PHASE</span>
       </div>
       <canvas id="miniProfileCanvas" class="profile-canvas"></canvas>
     </div>

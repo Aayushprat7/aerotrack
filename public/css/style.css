@@ -507,6 +507,38 @@ body {
   margin-top: 2px;
 }
 
+/* ADS-B Data Provenance Badge */
+.fr24-data-provenance {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 20px 0 20px;
+  padding: 8px 12px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--emerald-accent);
+  letter-spacing: 0.5px;
+}
+
+.provenance-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  background: var(--emerald-accent);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--emerald-accent);
+  animation: pulse-provenance 1.8s infinite;
+}
+
+@keyframes pulse-provenance {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.5; }
+}
+
 /* Mini Altitude Profile Chart inside Drawer */
 .fr24-profile-box {
   padding: 18px 20px;

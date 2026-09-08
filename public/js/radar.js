@@ -401,29 +401,26 @@ class AeroRadarEngine {
       const isSelected = flight.id === this.selectedFlightId;
       const altColor = this.getAltitudeColor(flight.altitude);
 
-      // 1. Draw or update Geodesic Flight Route with Altitude Gradient Color
-      if (!this.routePolylines[flight.id]) {
+      // 1. Draw Geodesic Flight Route for Selected Flight
+      if (isSelected && flight.origin && flight.destination) {
         const arcCoords = this.calculateArcCoordinates(
           flight.origin.lat, flight.origin.lon,
           flight.destination.lat, flight.destination.lon
         );
 
-        const polyline = L.polyline(arcCoords, {
-          color: isSelected ? '#00f0ff' : altColor,
-          opacity: isSelected ? 0.95 : 0.45,
-          weight: isSelected ? 3.5 : 2,
-          dashArray: isSelected ? null : '6, 6',
-          smoothFactor: 1
-        }).addTo(this.map);
-
-        this.routePolylines[flight.id] = polyline;
-      } else {
-        this.routePolylines[flight.id].setStyle({
-          color: isSelected ? '#00f0ff' : altColor,
-          opacity: isSelected ? 0.95 : 0.45,
-          weight: isSelected ? 3.5 : 2,
-          dashArray: isSelected ? null : '6, 6'
-        });
+        if (!this.routePolylines[flight.id]) {
+          this.routePolylines[flight.id] = L.polyline(arcCoords, {
+            color: '#00f0ff',
+            opacity: 0.95,
+            weight: 3,
+            smoothFactor: 1
+          }).addTo(this.map);
+        } else {
+          this.routePolylines[flight.id].setLatLngs(arcCoords);
+        }
+      } else if (this.routePolylines[flight.id]) {
+        this.map.removeLayer(this.routePolylines[flight.id]);
+        delete this.routePolylines[flight.id];
       }
 
       // 2. Draw or update Aircraft Marker
@@ -435,6 +432,14 @@ class AeroRadarEngine {
         this.markers[flight.id].setIcon(icon);
       } else {
         const marker = L.marker(latLng, { icon }).addTo(this.map);
+
+        marker.bindTooltip(`
+          <div style="font-family: 'Space Grotesk', sans-serif; font-size: 11px; padding: 2px 4px; line-height: 1.4;">
+            <strong style="color: #ffd700;">${flight.flightNumber}</strong> • ${flight.airline}<br/>
+            <span style="color: #94a3b8;">Alt:</span> ${(flight.altitude || 0).toLocaleString()} FT • <span style="color: #94a3b8;">Spd:</span> ${flight.speed || 0} KTS<br/>
+            <span style="color: #00f0ff;">${flight.origin?.code || 'DEL'} ➔ ${flight.destination?.code || 'BOM'}</span>
+          </div>
+        `, { direction: 'top', offset: [0, -14], opacity: 0.95 });
 
         marker.on('click', () => {
           if (this.onFlightSelect) this.onFlightSelect(flight);
