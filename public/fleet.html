@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AeroTrack — Fleet Operations & Asset Management</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+
+  <!-- AeroTrack Apple Spatial Stylesheet -->
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <!-- ========================================================================
+       Apple-Style Floating Navigation Dock
+       ======================================================================== -->
+  <nav class="apple-nav-dock">
+    <a href="index.html" class="dock-brand">
+      <span class="dock-brand-logo">✈️</span>
+      <span class="dock-brand-text">AEROTRACK</span>
+    </a>
+
+    <div class="dock-links">
+      <a href="index.html" class="dock-link" data-page="radar">
+        <span>Radar Cockpit</span>
+        <span class="dock-key-hint">1</span>
+      </a>
+      <a href="flights.html" class="dock-link" data-page="flights">
+        <span>Flight Roster</span>
+        <span class="dock-key-hint">2</span>
+      </a>
+      <a href="prices.html" class="dock-link" data-page="prices">
+        <span>Price Intel</span>
+        <span class="dock-key-hint">3</span>
+      </a>
+      <a href="deals.html" class="dock-link" data-page="deals">
+        <span>Deals & Picks</span>
+        <span class="dock-key-hint">4</span>
+      </a>
+      <a href="fleet.html" class="dock-link active" data-page="fleet">
+        <span>Fleet Ops</span>
+        <span class="dock-key-hint">5</span>
+      </a>
+    </div>
+
+    <div class="dock-actions">
+      <div id="dock-tracked-count" style="font-family: var(--font-mono); font-size: 11px; color: var(--cyan-primary); padding: 0 6px;">
+        AIRBORNE
+      </div>
+      <button id="dock-audio-btn" class="dock-btn" title="Toggle Spatial Audio (Key: M)">
+        🔊 <span class="dock-key-hint">M</span>
+      </button>
+      <button onclick="document.getElementById('modal-register-flight').classList.add('active'); if(window.aeroAudio) window.aeroAudio.playClick();" class="dock-btn dock-btn-cyan">
+        + Log Flight
+      </button>
+    </div>
+  </nav>
+
+  <!-- ========================================================================
+       Main Content Container
+       ======================================================================== -->
+  <main class="page-container">
+
+    <!-- Hero Header -->
+    <header class="page-hero" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 14px;">
+      <div>
+        <div class="hero-tag">OPERATIONAL DISPATCH • CLUSTER SYNCED</div>
+        <h1 class="hero-title">Fleet Operations & Management</h1>
+        <p class="hero-subtitle">
+          Monitor real-time system metrics, deploy new aircraft into the radar grid, and manage airspace asset records.
+        </p>
+      </div>
+
+      <button onclick="document.getElementById('modal-register-flight').classList.add('active'); if(window.aeroAudio) window.aeroAudio.playClick();" class="dock-btn dock-btn-cyan" style="padding: 10px 20px; font-size: 13px;">
+        + Log New Flight Asset
+      </button>
+    </header>
+
+    <!-- Fleet Telemetry Stat Cards -->
+    <section class="fleet-stats-ticker">
+      <div class="fleet-stat-card">
+        <div style="font-size: 12px; font-family: var(--font-mono); color: var(--text-dim); text-transform: uppercase;">Total Tracked</div>
+        <div id="stat-fleet-total" class="fleet-stat-val" style="color: var(--cyan-primary);">12</div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Registered Aircraft Assets</div>
+      </div>
+
+      <div class="fleet-stat-card">
+        <div style="font-size: 12px; font-family: var(--font-mono); color: var(--text-dim); text-transform: uppercase;">Active In Air</div>
+        <div id="stat-fleet-inair" class="fleet-stat-val" style="color: var(--emerald-accent);">9</div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Simulated Live Movement</div>
+      </div>
+
+      <div class="fleet-stat-card">
+        <div style="font-size: 12px; font-family: var(--font-mono); color: var(--text-dim); text-transform: uppercase;">Boarding / Gate</div>
+        <div id="stat-fleet-boarding" class="fleet-stat-val" style="color: var(--amber-accent);">2</div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Terminal Pre-Departure</div>
+      </div>
+
+      <div class="fleet-stat-card">
+        <div style="font-size: 12px; font-family: var(--font-mono); color: var(--text-dim); text-transform: uppercase;">Data Layer</div>
+        <div id="stat-fleet-mode" class="fleet-stat-val" style="font-size: 16px; color: #fff; line-height: 1.4; margin-top: 8px;">Synchronized</div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Resilient Dual Architecture</div>
+      </div>
+    </section>
+
+    <!-- Operational Roster Table -->
+    <section style="background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 20px; overflow: hidden;">
+      <div style="padding: 18px 24px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 16px; font-weight: 700; color: #fff;">Operational Asset Matrix</span>
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">REAL-TIME 2.5s TELEMETRY SYNC</span>
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--border-subtle); background: rgba(0,0,0,0.2); font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase;">
+              <th style="padding: 12px 16px;">Flight Number</th>
+              <th style="padding: 12px 16px;">Carrier</th>
+              <th style="padding: 12px 16px;">Route</th>
+              <th style="padding: 12px 16px;">Status</th>
+              <th style="padding: 12px 16px;">Altitude</th>
+              <th style="padding: 12px 16px;">Ground Speed</th>
+              <th style="padding: 12px 16px; text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="fleet-table-body">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal: Register Flight Asset -->
+  <div id="modal-register-flight" class="cyber-modal-backdrop">
+    <div class="cyber-modal-window">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div style="font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--cyan-primary);">
+          ✈ LOG AIRSPACE FLIGHT ASSET
+        </div>
+        <button onclick="document.getElementById('modal-register-flight').classList.remove('active')" style="background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;">✕</button>
+      </div>
+
+      <form id="form-register-flight" style="display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div>
+            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">Flight Number</label>
+            <input type="text" id="reg-flight-num" class="cyber-search-box" style="width: 100%; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 12px; color: #fff;" placeholder="e.g. AI-820" required />
+          </div>
+          <div>
+            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">Origin Hub (Code)</label>
+            <input type="text" id="reg-origin" class="cyber-search-box" style="width: 100%; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 12px; color: #fff;" placeholder="e.g. DEL, BOM, BLR" required />
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div>
+            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">Destination Hub (Code)</label>
+            <input type="text" id="reg-destination" class="cyber-search-box" style="width: 100%; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 12px; color: #fff;" placeholder="e.g. GOI, DXB, JFK" required />
+          </div>
+          <div>
+            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">Operational Status</label>
+            <select id="reg-status" class="cyber-select-dropdown" style="width: 100%;">
+              <option value="In Flight">In Flight (Simulate Airborne)</option>
+              <option value="On Schedule">On Schedule</option>
+              <option value="Boarding">Boarding</option>
+              <option value="Delayed">Delayed</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="font-size: 12px; color: var(--text-muted); background: rgba(0,240,255,0.06); border-left: 3px solid var(--cyan-primary); padding: 12px; border-radius: 8px;">
+          ℹ️ Asset coordinates, great-circle trajectories, and fare analytics are automatically interpolated upon registration.
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
+          <button type="button" onclick="document.getElementById('modal-register-flight').classList.remove('active')" class="dock-btn">
+            Cancel
+          </button>
+          <button type="submit" class="dock-btn dock-btn-cyan">
+            Deploy Asset
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- External & Module Scripts -->
+  <script src="/js/audio-effects.js"></script>
+  <script src="/js/standalone-store.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

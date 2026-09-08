@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AeroTrack — Flight Roster & Booking Matrix</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+
+  <!-- AeroTrack Apple Spatial Stylesheet -->
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <!-- ========================================================================
+       Apple-Style Floating Navigation Dock
+       ======================================================================== -->
+  <nav class="apple-nav-dock">
+    <a href="index.html" class="dock-brand">
+      <span class="dock-brand-logo">✈️</span>
+      <span class="dock-brand-text">AEROTRACK</span>
+    </a>
+
+    <div class="dock-links">
+      <a href="index.html" class="dock-link" data-page="radar">
+        <span>Radar Cockpit</span>
+        <span class="dock-key-hint">1</span>
+      </a>
+      <a href="flights.html" class="dock-link active" data-page="flights">
+        <span>Flight Roster</span>
+        <span class="dock-key-hint">2</span>
+      </a>
+      <a href="prices.html" class="dock-link" data-page="prices">
+        <span>Price Intel</span>
+        <span class="dock-key-hint">3</span>
+      </a>
+      <a href="deals.html" class="dock-link" data-page="deals">
+        <span>Deals & Picks</span>
+        <span class="dock-key-hint">4</span>
+      </a>
+      <a href="fleet.html" class="dock-link" data-page="fleet">
+        <span>Fleet Ops</span>
+        <span class="dock-key-hint">5</span>
+      </a>
+    </div>
+
+    <div class="dock-actions">
+      <div id="dock-tracked-count" style="font-family: var(--font-mono); font-size: 11px; color: var(--cyan-primary); padding: 0 6px;">
+        AIRBORNE
+      </div>
+      <button id="dock-audio-btn" class="dock-btn" title="Toggle Spatial Audio (Key: M)">
+        🔊 <span class="dock-key-hint">M</span>
+      </button>
+      <a href="deals.html" class="dock-btn dock-btn-cyan">
+        Explore Deals
+      </a>
+    </div>
+  </nav>
+
+  <!-- ========================================================================
+       Main Content Container
+       ======================================================================== -->
+  <main class="page-container">
+
+    <!-- Hero Header -->
+    <header class="page-hero">
+      <div class="hero-tag">FLIGHT INTELLIGENCE • ALL AIRLINES</div>
+      <h1 class="hero-title">Aviation Corridors & Roster</h1>
+      <p class="hero-subtitle">
+        Inspect live domestic and international air corridors. Real-time convenience scoring balances direct timing, DigiYatra fast-track privileges, and competitive rupee fares.
+      </p>
+    </header>
+
+    <!-- Sector Quick Switcher -->
+    <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
+      <button class="amenity-toggle-chip sector-pill-btn active" data-type="all">All Corridors</button>
+      <button class="amenity-toggle-chip sector-pill-btn" data-type="domestic">🇮🇳 Domestic Hubs (DEL, BOM, BLR, GOI, HYD)</button>
+      <button class="amenity-toggle-chip sector-pill-btn" data-type="international">🌐 International Corridors (DXB, JFK, SFO, LHR)</button>
+    </div>
+
+    <!-- Search & Filter Bar -->
+    <section class="filter-search-container">
+      <div class="cyber-search-box">
+        <i>🔍</i>
+        <input type="text" id="roster-search" placeholder="Search flight number, airline, or city (e.g. 6E-2041, Delhi, Mumbai, Akasa)..." />
+      </div>
+
+      <div>
+        <select id="roster-stops" class="cyber-select-dropdown" style="width: 100%;">
+          <option value="all">Stops: Any</option>
+          <option value="0">Direct Non-Stop Only</option>
+          <option value="1">1 Stop Transit</option>
+        </select>
+      </div>
+
+      <div>
+        <select id="roster-time" class="cyber-select-dropdown" style="width: 100%;">
+          <option value="all">Departure: Any Time</option>
+          <option value="morning">Morning (05:00 - 12:00)</option>
+          <option value="afternoon">Afternoon (12:00 - 17:00)</option>
+          <option value="evening">Evening (17:00 - 22:00)</option>
+          <option value="night">Night / Red-Eye</option>
+        </select>
+      </div>
+
+      <div>
+        <select id="roster-sort" class="cyber-select-dropdown" style="width: 100%;">
+          <option value="convenience">Sort: Highest Convenience</option>
+          <option value="price-low">Sort: Lowest Price (₹)</option>
+          <option value="duration">Sort: Quickest Flight Time</option>
+          <option value="rating">Sort: Airline Rating</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Sub-Filters: Amenities & Convenience Slider -->
+    <section class="sub-filter-bar">
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim);">AMENITIES:</span>
+        <button id="btn-amenity-digiyatra" class="amenity-toggle-chip">⚡ DigiYatra Fast-Track</button>
+        <button id="btn-amenity-wifi" class="amenity-toggle-chip">📶 In-Flight Wi-Fi</button>
+        <button id="btn-amenity-legroom" class="amenity-toggle-chip">💺 Extra Legroom</button>
+      </div>
+
+      <div class="slider-widget">
+        <label for="roster-conv-slider" style="color: var(--text-muted);">Min Convenience Index:</label>
+        <input type="range" id="roster-conv-slider" min="50" max="98" value="70" step="2" />
+        <span id="roster-conv-val" style="color: var(--cyan-primary); font-weight: 700; width: 45px;">70%+</span>
+      </div>
+    </section>
+
+    <!-- Flights Grid / List -->
+    <section id="roster-cards-container" class="flights-grid-list">
+      <!-- Populated dynamically by AeroApp -->
+    </section>
+  </main>
+
+  <!-- Digital Boarding Pass Modal -->
+  <div id="modal-boarding-pass" class="cyber-modal-backdrop">
+    <div class="cyber-modal-window" style="max-width: 680px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <span style="font-family: var(--font-display); font-size: 18px; font-weight: 700; color: #fff;">FLIGHT PASS PREVIEW</span>
+        <button onclick="document.getElementById('modal-boarding-pass').classList.remove('active')" style="background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;">✕</button>
+      </div>
+      <div id="boarding-pass-modal-content"></div>
+    </div>
+  </div>
+
+  <!-- External & Module Scripts -->
+  <script src="/js/audio-effects.js"></script>
+  <script src="/js/standalone-store.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

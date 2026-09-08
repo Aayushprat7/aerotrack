@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AeroTrack — Smart Recommendations & Verified Deals Hub</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+
+  <!-- AeroTrack Apple Spatial Stylesheet -->
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <!-- ========================================================================
+       Apple-Style Floating Navigation Dock
+       ======================================================================== -->
+  <nav class="apple-nav-dock">
+    <a href="index.html" class="dock-brand">
+      <span class="dock-brand-logo">✈️</span>
+      <span class="dock-brand-text">AEROTRACK</span>
+    </a>
+
+    <div class="dock-links">
+      <a href="index.html" class="dock-link" data-page="radar">
+        <span>Radar Cockpit</span>
+        <span class="dock-key-hint">1</span>
+      </a>
+      <a href="flights.html" class="dock-link" data-page="flights">
+        <span>Flight Roster</span>
+        <span class="dock-key-hint">2</span>
+      </a>
+      <a href="prices.html" class="dock-link" data-page="prices">
+        <span>Price Intel</span>
+        <span class="dock-key-hint">3</span>
+      </a>
+      <a href="deals.html" class="dock-link active" data-page="deals">
+        <span>Deals & Picks</span>
+        <span class="dock-key-hint">4</span>
+      </a>
+      <a href="fleet.html" class="dock-link" data-page="fleet">
+        <span>Fleet Ops</span>
+        <span class="dock-key-hint">5</span>
+      </a>
+    </div>
+
+    <div class="dock-actions">
+      <div id="dock-tracked-count" style="font-family: var(--font-mono); font-size: 11px; color: var(--cyan-primary); padding: 0 6px;">
+        AIRBORNE
+      </div>
+      <button id="dock-audio-btn" class="dock-btn" title="Toggle Spatial Audio (Key: M)">
+        🔊 <span class="dock-key-hint">M</span>
+      </button>
+      <a href="flights.html" class="dock-btn dock-btn-cyan">
+        View Roster
+      </a>
+    </div>
+  </nav>
+
+  <!-- ========================================================================
+       Main Content Container
+       ======================================================================== -->
+  <main class="page-container">
+
+    <!-- Hero Header -->
+    <header class="page-hero">
+      <div class="hero-tag">AI-SCORED RECOMMENDATIONS • VERIFIED PROMOS</div>
+      <h1 class="hero-title">Smart Picks & Deals Hub</h1>
+      <p class="hero-subtitle">
+        Our multi-factor recommendation engine balances Price (40%), Convenience (35%), and Duration (25%). Apply verified promotional discounts with a single click.
+      </p>
+    </header>
+
+    <!-- Section 1: AI Recommendation Spotlight Cards -->
+    <section style="margin-bottom: 40px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 style="font-size: 20px; font-weight: 700; color: #fff;">AeroTrack Choice Recommendations</h2>
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">CLICK ANY CARD TO TRACK IN RADAR</span>
+      </div>
+
+      <div id="recommendations-grid" class="recommendations-spotlight-grid">
+        <!-- Dynamically rendered recommendation cards -->
+      </div>
+    </section>
+
+    <!-- Section 2: Verified Airline Deals & Coupons -->
+    <section>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div>
+          <h2 style="font-size: 20px; font-weight: 700; color: #fff;">Verified Promotional Discounts</h2>
+          <p style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">One-click redemption recalculates live fares across all domestic & international corridors.</p>
+        </div>
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--cyan-primary);">100% VERIFIED</span>
+      </div>
+
+      <div id="deals-coupons-grid" class="deals-coupons-grid">
+        <!-- Dynamically populated coupon tiles -->
+      </div>
+    </section>
+  </main>
+
+  <!-- External & Module Scripts -->
+  <script src="/js/audio-effects.js"></script>
+  <script src="/js/standalone-store.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

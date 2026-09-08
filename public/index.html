@@ -1,143 +1,173 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Aerotrack Control Center</title>
-    <link href="/node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
-  </head>
-  <body class="bg-light">
-    <div class="container my-5">
-      <header class="pb-3 mb-4 border-bottom">
-        <span class="fs-4 fw-bold text-primary">Aerotrack System</span>
-      </header>
-      
-      <!-- Flight Registration Input Form -->
-      <div class="card p-4 mb-4 shadow-sm">
-        <h5 class="mb-3">Log Flight Profile</h5>
-        <form id="flight-form" class="row g-3">
-  <div class="col-md-3">
-    <input type="text" id="flightNum" class="form-control" placeholder="Flight ID (e.g., AI-302)" required>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AeroTrack — Live Airspace Radar Cockpit</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+  <!-- AeroTrack Apple Spatial Stylesheet -->
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="cockpit-fullscreen-page">
+
+  <!-- ========================================================================
+       Apple-Style Floating Navigation Dock
+       ======================================================================== -->
+  <nav class="apple-nav-dock">
+    <a href="index.html" class="dock-brand">
+      <span class="dock-brand-logo">✈️</span>
+      <span class="dock-brand-text">AEROTRACK</span>
+    </a>
+
+    <div class="dock-links">
+      <a href="index.html" class="dock-link active" data-page="radar">
+        <span>Radar Cockpit</span>
+        <span class="dock-key-hint">1</span>
+      </a>
+      <a href="flights.html" class="dock-link" data-page="flights">
+        <span>Flight Roster</span>
+        <span class="dock-key-hint">2</span>
+      </a>
+      <a href="prices.html" class="dock-link" data-page="prices">
+        <span>Price Intel</span>
+        <span class="dock-key-hint">3</span>
+      </a>
+      <a href="deals.html" class="dock-link" data-page="deals">
+        <span>Deals & Picks</span>
+        <span class="dock-key-hint">4</span>
+      </a>
+      <a href="fleet.html" class="dock-link" data-page="fleet">
+        <span>Fleet Ops</span>
+        <span class="dock-key-hint">5</span>
+      </a>
+    </div>
+
+    <div class="dock-actions">
+      <div id="dock-tracked-count" style="font-family: var(--font-mono); font-size: 11px; color: var(--cyan-primary); padding: 0 6px;">
+        AIRBORNE
+      </div>
+      <button id="dock-audio-btn" class="dock-btn" title="Toggle Spatial Audio (Key: M)">
+        🔊 <span class="dock-key-hint">M</span>
+      </button>
+      <a href="flights.html" class="dock-btn dock-btn-cyan">
+        Book Corridors
+      </a>
+    </div>
+  </nav>
+
+  <!-- ========================================================================
+       Camera Lock / Auto-Follow Floating HUD Indicator
+       ======================================================================== -->
+  <div id="camera-lock-toggle" class="camera-lock-indicator" title="Toggle Auto-Follow Camera Lock (Spacebar)">
+    <span class="lock-dot"></span>
+    <span class="lock-text">TARGET LOCK: ON</span>
+    <span style="font-size: 9px; opacity: 0.6; padding-left: 4px;">[SPACE]</span>
   </div>
-  <div class="col-md-3">
-    <input type="text" id="destination" class="form-control" placeholder="Destination" required>
+
+  <!-- ========================================================================
+       Full-Bleed Geospatial Radar Map & Dynamic Canvas Overlay
+       ======================================================================== -->
+  <div class="cockpit-map-wrapper">
+    <div id="flight-radar-map"></div>
+    <canvas id="radar-sweep-canvas" class="cockpit-radar-sweep-canvas"></canvas>
   </div>
-  <div class="col-md-3">
-    <select id="statusSelect" class="form-select">
-      <option value="On Schedule">On Schedule</option>
-      <option value="Boarding">Boarding</option>
-      <option value="Delayed">Delayed</option>
-    </select>
-  </div>
-  <div class="col-md-3">
-    <button type="submit" class="btn btn-primary w-100">Register Asset</button>
-  </div>
-</form>
+
+  <!-- ========================================================================
+       Floating Apple-Style Telemetry Card
+       ======================================================================== -->
+  <aside class="cockpit-telemetry-card">
+    <div class="telemetry-header">
+      <div>
+        <div id="cockpit-flight-no" class="flight-number-big">6E-2041</div>
+        <div id="cockpit-airline" class="airline-aircraft-text">IndiGo • Airbus A321neo</div>
+      </div>
+      <span id="cockpit-status" class="status-badge status-in-flight">In Flight</span>
+    </div>
+
+    <div class="telemetry-route-bar">
+      <div class="airport-node">
+        <div id="cockpit-orig-code" class="airport-code-huge">DEL</div>
+        <div id="cockpit-orig-city" class="airport-city-sub">New Delhi</div>
       </div>
 
-      <!-- Active Operational Logs Matrix -->
-      <div class="card p-4 shadow-sm">
-        <h5 class="mb-3">Active Pipeline Logs Matrix</h5>
-        <div class="table-responsive">
-          <table class="table align-middle">
-            <thead>
-              <tr>
-                <th>Flight ID</th>
-                <th>Target Destination</th>
-                <th>Status</th>
-                <th></th> <!-- Visual layout anchor for the alignment grid -->
-              </tr>
-            </thead>
-            <tbody id="flight-table-data">
-              <!-- Dynamically populated by JavaScript rendering engine -->
-            </tbody>
-          </table>
-        </div>
+      <div class="route-flight-arrow">
+        <span>✈</span>
+        <span id="cockpit-progress-pct" class="route-progress-num">52%</span>
+      </div>
+
+      <div class="airport-node">
+        <div id="cockpit-dest-code" class="airport-code-huge">BOM</div>
+        <div id="cockpit-dest-city" class="airport-city-sub">Mumbai</div>
       </div>
     </div>
-    
-    <script>
-      // 1. Capture the Form element from our webpage HTML layout
-      const flightForm = document.getElementById('flight-form');
 
-      // 2. Intercept the submit click event
-      flightForm.addEventListener('submit', async (event) => {
-        event.preventDefault(); // Prevents the browser from reloading the page automatically
+    <div class="cockpit-progress-track">
+      <div id="cockpit-progress-fill" class="cockpit-progress-fill" style="width: 52%;"></div>
+    </div>
 
-        // 3. Extract the exact text strings from our input fields
-        const flightNumber = document.getElementById('flightNum').value;
-const destination = document.getElementById('destination').value;
-const status = document.getElementById('statusSelect').value; // Get the dropdown value
+    <div class="telemetry-metrics-grid">
+      <div class="metric-tile">
+        <div class="metric-label">Live Altitude</div>
+        <div id="cockpit-alt" class="metric-value">33,000 FT</div>
+      </div>
+      <div class="metric-tile">
+        <div class="metric-label">Ground Speed</div>
+        <div id="cockpit-spd" class="metric-value">460 KT</div>
+      </div>
+      <div class="metric-tile">
+        <div class="metric-label">True Heading</div>
+        <div id="cockpit-head" class="metric-value">205°</div>
+      </div>
+      <div class="metric-tile">
+        <div class="metric-label">Convenience</div>
+        <div id="cockpit-conv" class="metric-value" style="color: var(--emerald-accent);">94/100</div>
+      </div>
+    </div>
 
-const formData = {
-  flightNumber: flightNumber,
-  destination: destination,
-  status: status // Pass it to the backend packet
-};
+    <div style="display: flex; gap: 8px; margin-top: 18px;">
+      <a href="prices.html" class="dock-btn" style="flex: 1; text-align: center; justify-content: center; text-decoration: none;">
+        📈 Price Intel
+      </a>
+      <button onclick="window.aeroApp.openBoardingPass(window.aeroApp.selectedFlight?.id)" class="dock-btn dock-btn-cyan" style="flex: 1; justify-content: center;">
+        🎫 Boarding Pass
+      </button>
+    </div>
+  </aside>
 
-        // 5. Use the Fetch API to transmit this data bundle to our POST route
-        await fetch('/api/flights', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData) // Converts our object into a raw text string for transmission
-        });
+  <!-- ========================================================================
+       Floating Bottom Aircraft Quick-Switch Dock
+       ======================================================================== -->
+  <div id="cockpit-quick-dock" class="cockpit-flights-dock">
+    <!-- Populated dynamically with active flight chips -->
+  </div>
 
-        // 6. Clear the text boxes so the user can enter another record
-        flightForm.reset();
-        
-        // 7. Refresh the UI grid matrix immediately
-        loadFlights();
-        console.log("Data packet successfully dispatched to backend engine.");
-      });
+  <!-- Digital Boarding Pass Modal -->
+  <div id="modal-boarding-pass" class="cyber-modal-backdrop">
+    <div class="cyber-modal-window" style="max-width: 680px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <span style="font-family: var(--font-display); font-size: 18px; font-weight: 700; color: #fff;">FLIGHT PASS PREVIEW</span>
+        <button onclick="document.getElementById('modal-boarding-pass').classList.remove('active')" style="background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;">✕</button>
+      </div>
+      <div id="boarding-pass-modal-content"></div>
+    </div>
+  </div>
 
-      // 8. Function to fetch data from backend and render it onto the table grid
-      async function loadFlights() {
-        const response = await fetch('/api/flights');
-        const flights = await response.json(); 
+  <!-- External Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-        const tableBody = document.getElementById('flight-table-data');
-        tableBody.innerHTML = '';
-
-        flights.forEach(flight => {
-  // Determine badge color dynamically based on data state
-  let badgeColor = 'bg-success'; // default Green for On Schedule
-  if (flight.status === 'Delayed') badgeColor = 'bg-danger'; // Red
-  if (flight.status === 'Boarding') badgeColor = 'bg-warning text-dark'; // Yellow
-
-  const rowHTML = `
-    <tr>
-      <td class="fw-bold text-uppercase">${flight.flightNumber}</td>
-      <td>${flight.destination}</td>
-      <td><span class="badge ${badgeColor}">${flight.status || 'On Schedule'}</span></td>
-      <td class="text-end">
-        <button class="btn btn-outline-danger btn-sm px-3" onclick="deleteFlight('${flight._id}')">
-          Purge Asset
-        </button>
-      </td>
-    </tr>
-  `;
-  tableBody.innerHTML += rowHTML;
-});
-      }
-
-      // 9. Function to execute the data purge network call
-      async function deleteFlight(flightId) {
-        if (confirm("Are you sure you want to purge this operational asset tracking record?")) {
-          // Run a DELETE network request directly targeting the specific item ID wildcard path
-          const response = await fetch(`/api/flights/${flightId}`, {
-            method: 'DELETE'
-          });
-
-          if (response.ok) {
-            // Refresh the screen grid matrix instantly once the database confirms removal
-            loadFlights();
-          } else {
-            alert("Error: Unable to clear records from database infrastructure cluster.");
-          }
-        }
-      }
-
-      // 10. Trigger this function immediately when the web page first turns on in the browser
-      loadFlights();
-    </script>
-  </body>
+  <!-- AeroTrack Engine Modules -->
+  <script src="/js/audio-effects.js"></script>
+  <script src="/js/standalone-store.js"></script>
+  <script src="/js/radar.js"></script>
+  <script src="/js/price-tracker.js"></script>
+  <script src="/js/app.js"></script>
+</body>
 </html>

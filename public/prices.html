@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AeroTrack — Price Intelligence & 30-Day AI Forecast</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+
+  <!-- AeroTrack Apple Spatial Stylesheet -->
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <!-- ========================================================================
+       Apple-Style Floating Navigation Dock
+       ======================================================================== -->
+  <nav class="apple-nav-dock">
+    <a href="index.html" class="dock-brand">
+      <span class="dock-brand-logo">✈️</span>
+      <span class="dock-brand-text">AEROTRACK</span>
+    </a>
+
+    <div class="dock-links">
+      <a href="index.html" class="dock-link" data-page="radar">
+        <span>Radar Cockpit</span>
+        <span class="dock-key-hint">1</span>
+      </a>
+      <a href="flights.html" class="dock-link" data-page="flights">
+        <span>Flight Roster</span>
+        <span class="dock-key-hint">2</span>
+      </a>
+      <a href="prices.html" class="dock-link active" data-page="prices">
+        <span>Price Intel</span>
+        <span class="dock-key-hint">3</span>
+      </a>
+      <a href="deals.html" class="dock-link" data-page="deals">
+        <span>Deals & Picks</span>
+        <span class="dock-key-hint">4</span>
+      </a>
+      <a href="fleet.html" class="dock-link" data-page="fleet">
+        <span>Fleet Ops</span>
+        <span class="dock-key-hint">5</span>
+      </a>
+    </div>
+
+    <div class="dock-actions">
+      <div id="dock-tracked-count" style="font-family: var(--font-mono); font-size: 11px; color: var(--cyan-primary); padding: 0 6px;">
+        AIRBORNE
+      </div>
+      <button id="dock-audio-btn" class="dock-btn" title="Toggle Spatial Audio (Key: M)">
+        🔊 <span class="dock-key-hint">M</span>
+      </button>
+      <a href="deals.html" class="dock-btn dock-btn-cyan">
+        View Deals
+      </a>
+    </div>
+  </nav>
+
+  <!-- ========================================================================
+       Main Content Container
+       ======================================================================== -->
+  <main class="page-container">
+
+    <!-- Hero Header -->
+    <header class="page-hero">
+      <div class="hero-tag">PREDICTIVE FARE ALGORITHMS • INR (₹)</div>
+      <h1 class="hero-title">Price Intelligence & Forecast</h1>
+      <p class="hero-subtitle">
+        Cross-analyze past 45-day flight booking curves against our 30-day predictive surge models to determine the optimal day and window to secure tickets.
+      </p>
+    </header>
+
+    <!-- Route Selector & Current Flight Corridor Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 18px; padding: 14px 20px; margin-bottom: 22px; flex-wrap: wrap; gap: 14px;">
+      <div>
+        <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim); text-transform: uppercase;">SELECT CORRIDOR:</span>
+        <select id="price-flight-selector" class="cyber-select-dropdown" style="margin-left: 10px; min-width: 320px;">
+          <!-- Dynamically populated -->
+        </select>
+      </div>
+
+      <div style="font-family: var(--font-mono); font-size: 12px; color: var(--cyan-primary);">
+        TARGET: <strong id="price-header-route" style="color: #fff;">6E-2041 (DEL ➔ BOM)</strong>
+      </div>
+    </div>
+
+    <!-- Dual Layout: Canvas Chart & Best Day to Book Card -->
+    <section class="price-layout-grid">
+      <!-- Interactive Canvas Chart -->
+      <div class="chart-card-wrapper">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="font-size: 16px; font-weight: 700; color: #fff;">Fare Fluctuation Curve</div>
+          <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">
+            SCRUB TO INSPECT SPECIFIC DATES
+          </div>
+        </div>
+
+        <div class="chart-canvas-box">
+          <canvas id="priceTrendCanvas"></canvas>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 14px; font-size: 12px; color: var(--text-dim);">
+          <span>◀ 45-Day Recorded Lowest & Peak Fares</span>
+          <span>30-Day Predictive Surge Model ▶</span>
+        </div>
+      </div>
+
+      <!-- Actionable "Best Day to Book" Card -->
+      <aside class="best-day-intel-card">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 12px; font-family: var(--font-mono); color: var(--text-dim); text-transform: uppercase;">RECOMMENDATION</span>
+            <div id="price-action-badge" class="action-pill-buy">BUY NOW</div>
+          </div>
+
+          <div style="margin: 24px 0 16px 0;">
+            <div style="font-size: 12px; color: var(--text-muted);">Optimal Booking Day:</div>
+            <div id="price-best-day" style="font-family: var(--font-display); font-size: 38px; font-weight: 700; color: #fff; margin-top: 2px;">Tuesday</div>
+            <div style="font-size: 13px; color: var(--text-dim); margin-top: 4px;">Mid-week off-peak dispatch typically offers the lowest carrier rate.</div>
+          </div>
+
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 14px; padding: 14px; margin-bottom: 18px;">
+            <div style="font-size: 12px; color: var(--text-muted);">Estimated Savings:</div>
+            <div id="price-savings" style="font-family: var(--font-mono); font-size: 26px; font-weight: 700; color: var(--emerald-accent);">₹1,150</div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Compared against anticipated holiday surge pricing.</div>
+          </div>
+
+          <p id="price-rec-summary" style="font-size: 13px; color: #cbd5e1; line-height: 1.5;">
+            Current fare is close to the 45-day lowest recorded price.
+          </p>
+          <p id="price-rec-details" style="font-size: 12px; color: var(--text-dim); margin-top: 8px; line-height: 1.4;">
+            Fares are predicted to rise by 15% to 28% over the next 10 days.
+          </p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 24px;">
+          <button id="btn-price-drop-alert" class="dock-btn dock-btn-cyan" style="width: 100%; justify-content: center;">
+            🔔 Enable Price Drop Alerts
+          </button>
+          <a href="flights.html" class="dock-btn" style="width: 100%; justify-content: center; text-decoration: none;">
+            Lock In Ticket on Roster
+          </a>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <!-- External & Module Scripts -->
+  <script src="/js/audio-effects.js"></script>
+  <script src="/js/standalone-store.js"></script>
+  <script src="/js/price-tracker.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
