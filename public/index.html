@@ -3,157 +3,400 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AeroTrack — Live Airspace Radar Cockpit</title>
+  <title>AeroTrack — Flightradar24 Airspace & Price Intelligence Platform</title>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
 
-  <!-- Leaflet CSS -->
+  <!-- Leaflet CSS for Aerospace Map -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 
-  <!-- AeroTrack Apple Spatial Stylesheet -->
+  <!-- AeroTrack Flightradar24 Stylesheet -->
   <link rel="stylesheet" href="/css/style.css" />
 </head>
-<body class="cockpit-fullscreen-page">
+<body>
 
   <!-- ========================================================================
-       Apple-Style Floating Navigation Dock
+       TOP FLIGHTRADAR24 COMMAND BAR
        ======================================================================== -->
-  <nav class="apple-nav-dock">
-    <a href="index.html" class="dock-brand">
-      <span class="dock-brand-logo">✈️</span>
-      <span class="dock-brand-text">AEROTRACK</span>
-    </a>
-
-    <div class="dock-links">
-      <a href="index.html" class="dock-link active" data-page="radar">
-        <span>Radar Cockpit</span>
-        <span class="dock-key-hint">1</span>
-      </a>
-      <a href="flights.html" class="dock-link" data-page="flights">
-        <span>Flight Roster</span>
-        <span class="dock-key-hint">2</span>
-      </a>
-      <a href="prices.html" class="dock-link" data-page="prices">
-        <span>Price Intel</span>
-        <span class="dock-key-hint">3</span>
-      </a>
-      <a href="deals.html" class="dock-link" data-page="deals">
-        <span>Deals & Picks</span>
-        <span class="dock-key-hint">4</span>
-      </a>
-      <a href="fleet.html" class="dock-link" data-page="fleet">
-        <span>Fleet Ops</span>
-        <span class="dock-key-hint">5</span>
-      </a>
+  <header class="fr24-header">
+    <!-- Brand -->
+    <div class="fr24-brand" onclick="window.aeroApp.closeAllDrawers()">
+      <div class="fr24-brand-icon">✈️</div>
+      <div class="fr24-brand-text">AERO<span>TRACK</span></div>
     </div>
 
-    <div class="dock-actions">
-      <div id="dock-tracked-count" style="font-family: var(--font-mono); font-size: 11px; color: var(--cyan-primary); padding: 0 6px;">
-        AIRBORNE
-      </div>
-      <button id="dock-audio-btn" class="dock-btn" title="Toggle Spatial Audio (Key: M)">
-        🔊 <span class="dock-key-hint">M</span>
+    <!-- Integrated Search Input -->
+    <div class="fr24-search-box">
+      <span class="fr24-search-icon">🔍</span>
+      <input type="text" id="global-flight-search" class="fr24-search-input" placeholder="Search flight, airline, airport (DEL, BOM, AI, 6E)..." />
+      <span class="fr24-search-hint">/</span>
+    </div>
+
+    <!-- Main Navigation Tabs -->
+    <nav class="fr24-nav-tabs">
+      <button class="fr24-nav-btn active" data-drawer="none" onclick="window.aeroApp.closeAllDrawers()">
+        <span>🛰️ Radar</span>
       </button>
-      <a href="flights.html" class="dock-btn dock-btn-cyan">
-        Book Corridors
-      </a>
+      <button class="fr24-nav-btn" data-drawer="roster" onclick="window.aeroApp.openDrawer('roster')">
+        <span>📋 Flights</span>
+      </button>
+      <button class="fr24-nav-btn" data-drawer="prices" onclick="window.aeroApp.openDrawer('prices')">
+        <span>📈 Price AI</span>
+      </button>
+      <button class="fr24-nav-btn" data-drawer="deals" onclick="window.aeroApp.openDrawer('deals')">
+        <span>🎁 Deals</span>
+      </button>
+      <button class="fr24-nav-btn" data-drawer="fleet" onclick="window.aeroApp.openDrawer('fleet')">
+        <span>⚙️ Fleet</span>
+      </button>
+    </nav>
+
+    <!-- Right Controls: Map Layers, Status Ticker & Audio -->
+    <div class="fr24-controls">
+      <!-- 1-Click Map Layer Switcher -->
+      <div class="fr24-layer-switcher">
+        <button class="layer-btn active" data-layer="topo" onclick="window.aeroApp.setLayer('topo')">🗺️ Terrain</button>
+        <button class="layer-btn" data-layer="satellite" onclick="window.aeroApp.setLayer('satellite')">🛰️ Satellite</button>
+        <button class="layer-btn" data-layer="dark" onclick="window.aeroApp.setLayer('dark')">🌊 Ocean</button>
+      </div>
+
+      <!-- Live Airborne Status -->
+      <div id="fr24-airborne-ticker" class="fr24-status-ticker">
+        <span>✈</span> <span id="fr24-airborne-count">11 AIRBORNE</span>
+      </div>
+
+      <!-- Audio Toggle -->
+      <button id="fr24-audio-toggle" class="fr24-icon-btn" title="Toggle Procedural Audio (M)">
+        🔊
+      </button>
     </div>
-  </nav>
+  </header>
 
   <!-- ========================================================================
-       Camera Lock / Auto-Follow Floating HUD Indicator
+       FULL-SCREEN MAP & RADAR CANVAS OVERLAY
        ======================================================================== -->
-  <div id="camera-lock-toggle" class="camera-lock-indicator" title="Toggle Auto-Follow Camera Lock (Spacebar)">
-    <span class="lock-dot"></span>
-    <span class="lock-text">TARGET LOCK: ON</span>
-    <span style="font-size: 9px; opacity: 0.6; padding-left: 4px;">[SPACE]</span>
-  </div>
-
-  <!-- ========================================================================
-       Full-Bleed Geospatial Radar Map & Dynamic Canvas Overlay
-       ======================================================================== -->
-  <div class="cockpit-map-wrapper">
+  <main class="fr24-map-container">
     <div id="flight-radar-map"></div>
-    <canvas id="radar-sweep-canvas" class="cockpit-radar-sweep-canvas"></canvas>
-  </div>
+    <canvas id="radar-sweep-canvas" class="fr24-canvas-overlay"></canvas>
+  </main>
 
   <!-- ========================================================================
-       Floating Apple-Style Telemetry Card
+       FLIGHTRADAR24 LEFT AIRCRAFT INSPECTOR (SLIDING DRAWER)
        ======================================================================== -->
-  <aside class="cockpit-telemetry-card">
-    <div class="telemetry-header">
-      <div>
-        <div id="cockpit-flight-no" class="flight-number-big">6E-2041</div>
-        <div id="cockpit-airline" class="airline-aircraft-text">IndiGo • Airbus A321neo</div>
-      </div>
-      <span id="cockpit-status" class="status-badge status-in-flight">In Flight</span>
+  <aside id="fr24-aircraft-panel" class="fr24-aircraft-panel">
+    <!-- Header with Livery Background -->
+    <div class="fr24-panel-header">
+      <button class="panel-close-btn" onclick="window.aeroApp.closeAircraftPanel()" title="Close Inspector">✕</button>
+      <div id="insp-flight-num" class="panel-flight-number">QP-1322</div>
+      <div id="insp-airline" class="panel-airline-name">Akasa Air</div>
+      <div id="insp-aircraft" class="panel-aircraft-type">Boeing 737 MAX 8 • VT-YAB</div>
     </div>
 
-    <div class="telemetry-route-bar">
-      <div class="airport-node">
-        <div id="cockpit-orig-code" class="airport-code-huge">DEL</div>
-        <div id="cockpit-orig-city" class="airport-city-sub">New Delhi</div>
+    <!-- Route Display -->
+    <div class="fr24-route-box">
+      <div class="route-nodes-row">
+        <div class="route-node-big">
+          <div id="insp-orig-code" class="route-iata-code">BOM</div>
+          <div id="insp-orig-city" class="route-city-name">Mumbai, India</div>
+          <div id="insp-dep-time" class="route-time-val">11:15 AM</div>
+        </div>
+
+        <div class="route-flight-plane">✈</div>
+
+        <div class="route-node-big right">
+          <div id="insp-dest-code" class="route-iata-code">GOI</div>
+          <div id="insp-dest-city" class="route-city-name">Goa, India</div>
+          <div id="insp-arr-time" class="route-time-val">12:25 PM</div>
+        </div>
       </div>
 
-      <div class="route-flight-arrow">
-        <span>✈</span>
-        <span id="cockpit-progress-pct" class="route-progress-num">52%</span>
-      </div>
-
-      <div class="airport-node">
-        <div id="cockpit-dest-code" class="airport-code-huge">BOM</div>
-        <div id="cockpit-dest-city" class="airport-city-sub">Mumbai</div>
-      </div>
-    </div>
-
-    <div class="cockpit-progress-track">
-      <div id="cockpit-progress-fill" class="cockpit-progress-fill" style="width: 52%;"></div>
-    </div>
-
-    <div class="telemetry-metrics-grid">
-      <div class="metric-tile">
-        <div class="metric-label">Live Altitude</div>
-        <div id="cockpit-alt" class="metric-value">33,000 FT</div>
-      </div>
-      <div class="metric-tile">
-        <div class="metric-label">Ground Speed</div>
-        <div id="cockpit-spd" class="metric-value">460 KT</div>
-      </div>
-      <div class="metric-tile">
-        <div class="metric-label">True Heading</div>
-        <div id="cockpit-head" class="metric-value">205°</div>
-      </div>
-      <div class="metric-tile">
-        <div class="metric-label">Convenience</div>
-        <div id="cockpit-conv" class="metric-value" style="color: var(--emerald-accent);">94/100</div>
+      <!-- Flight Progress Bar -->
+      <div class="fr24-progress-container">
+        <div class="fr24-progress-track">
+          <div id="insp-progress-fill" class="fr24-progress-fill" style="width: 65%;"></div>
+        </div>
+        <div class="fr24-progress-stats">
+          <span id="insp-progress-pct">65% Completed</span>
+          <span id="insp-duration">Duration: 1h 10m</span>
+        </div>
       </div>
     </div>
 
-    <div style="display: flex; gap: 8px; margin-top: 18px;">
-      <a href="prices.html" class="dock-btn" style="flex: 1; text-align: center; justify-content: center; text-decoration: none;">
-        📈 Price Intel
-      </a>
-      <button onclick="window.aeroApp.openBoardingPass(window.aeroApp.selectedFlight?.id)" class="dock-btn dock-btn-cyan" style="flex: 1; justify-content: center;">
-        🎫 Boarding Pass
+    <!-- Avionics Live Instruments Cluster -->
+    <div class="fr24-instruments-grid">
+      <div class="avionics-tile">
+        <div class="avionics-label">Calibrated Altitude</div>
+        <div id="insp-altitude" class="avionics-value" style="color: var(--fr24-yellow);">26,000 FT</div>
+      </div>
+      <div class="avionics-tile">
+        <div class="avionics-label">Ground Speed</div>
+        <div id="insp-speed" class="avionics-value">430 KTS</div>
+      </div>
+      <div class="avionics-tile">
+        <div class="avionics-label">Vertical Speed</div>
+        <div id="insp-vspeed" class="avionics-value" style="color: var(--emerald-accent);">+120 FPM</div>
+      </div>
+      <div class="avionics-tile">
+        <div class="avionics-label">True Heading (Track)</div>
+        <div id="insp-heading" class="avionics-value">166°</div>
+      </div>
+      <div class="avionics-tile">
+        <div class="avionics-label">Squawk Code</div>
+        <div id="insp-squawk" class="avionics-value" style="color: var(--cyan-primary);">2341</div>
+      </div>
+      <div class="avionics-tile">
+        <div class="avionics-label">Convenience Index</div>
+        <div id="insp-convenience" class="avionics-value" style="color: var(--emerald-accent);">95/100</div>
+      </div>
+    </div>
+
+    <!-- Mini Altitude & Speed Profile Chart -->
+    <div class="fr24-profile-box">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 11px; font-family: var(--font-mono); color: #94a3b8; text-transform: uppercase;">Flight Vertical Profile</span>
+        <span style="font-size: 10px; font-family: var(--font-mono); color: var(--emerald-accent);">CRUISE PHASE</span>
+      </div>
+      <canvas id="miniProfileCanvas" class="profile-canvas"></canvas>
+    </div>
+
+    <!-- Quick Action Buttons -->
+    <div class="fr24-panel-actions">
+      <div style="display: flex; gap: 8px;">
+        <button id="btn-toggle-camera-lock" class="btn-fr24-ghost" style="flex: 1;" onclick="window.aeroApp.toggleCameraLock()">
+          🎯 Camera Lock: ON
+        </button>
+        <button class="btn-fr24-ghost" style="flex: 1;" onclick="window.aeroApp.openPriceForFlight()">
+          📈 Price Intel
+        </button>
+      </div>
+      <button class="btn-fr24-primary" onclick="window.aeroApp.openBoardingPass(window.aeroApp.selectedFlight?.id)">
+        🎫 View Boarding Pass
       </button>
     </div>
   </aside>
 
   <!-- ========================================================================
-       Floating Bottom Aircraft Quick-Switch Dock
+       SLIDE-OVER DRAWERS (ROSTER, PRICES, DEALS, FLEET)
        ======================================================================== -->
-  <div id="cockpit-quick-dock" class="cockpit-flights-dock">
-    <!-- Populated dynamically with active flight chips -->
+  <div id="fr24-drawer-backdrop" class="fr24-drawer-backdrop" onclick="window.aeroApp.closeAllDrawers()"></div>
+
+  <!-- Drawer 1: Flight Roster & Booking Matrix -->
+  <div id="drawer-roster" class="fr24-drawer">
+    <div class="fr24-drawer-header">
+      <div>
+        <div class="drawer-title">Flight Corridors & Roster</div>
+        <div class="drawer-subtitle">Filter domestic & international flights by stops, departure time, and convenience</div>
+      </div>
+      <button class="panel-close-btn" onclick="window.aeroApp.closeAllDrawers()">✕</button>
+    </div>
+
+    <div class="drawer-content">
+      <!-- Sector Buttons -->
+      <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+        <button class="layer-btn active sector-pill-btn" data-type="all">All Corridors</button>
+        <button class="layer-btn sector-pill-btn" data-type="domestic">🇮🇳 Domestic</button>
+        <button class="layer-btn sector-pill-btn" data-type="international">🌐 International</button>
+      </div>
+
+      <!-- Filters Grid -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+        <select id="roster-stops" class="fr24-search-input" style="padding: 8px 12px; cursor: pointer;">
+          <option value="all">Stops: Any</option>
+          <option value="0">Direct Non-Stop Only</option>
+          <option value="1">1 Stop Transit</option>
+        </select>
+
+        <select id="roster-time" class="fr24-search-input" style="padding: 8px 12px; cursor: pointer;">
+          <option value="all">Departure: Any Time</option>
+          <option value="morning">Morning (05:00 - 12:00)</option>
+          <option value="afternoon">Afternoon (12:00 - 17:00)</option>
+          <option value="evening">Evening (17:00 - 22:00)</option>
+          <option value="night">Night / Red-Eye</option>
+        </select>
+      </div>
+
+      <!-- Convenience Slider & Amenities -->
+      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 12px 14px; margin-bottom: 18px;">
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px;">
+          <span style="color: #94a3b8;">Min Convenience Index:</span>
+          <span id="roster-conv-val" style="color: var(--cyan-primary); font-family: var(--font-mono); font-weight: 700;">70%+</span>
+        </div>
+        <input type="range" id="roster-conv-slider" min="50" max="98" value="70" step="2" style="width: 100%; accent-color: var(--cyan-primary); cursor: pointer;" />
+        <div style="display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap;">
+          <button id="btn-amenity-digiyatra" class="layer-btn">⚡ DigiYatra</button>
+          <button id="btn-amenity-wifi" class="layer-btn">📶 Wi-Fi</button>
+          <button id="btn-amenity-legroom" class="layer-btn">💺 Extra Legroom</button>
+        </div>
+      </div>
+
+      <!-- Flight Cards List -->
+      <div id="roster-cards-container" style="display: flex; flex-direction: column; gap: 10px;">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Drawer 2: Price Intelligence & 30-Day Forecast -->
+  <div id="drawer-prices" class="fr24-drawer">
+    <div class="fr24-drawer-header">
+      <div>
+        <div class="drawer-title">Price Intelligence & Forecast</div>
+        <div class="drawer-subtitle">45-day historical dips vs 30-day AI predicted price surge models</div>
+      </div>
+      <button class="panel-close-btn" onclick="window.aeroApp.closeAllDrawers()">✕</button>
+    </div>
+
+    <div class="drawer-content">
+      <!-- Corridor Switcher -->
+      <div style="margin-bottom: 16px;">
+        <label style="font-size: 11px; font-family: var(--font-mono); color: #94a3b8; display: block; margin-bottom: 4px;">SELECT CORRIDOR:</label>
+        <select id="price-flight-selector" class="fr24-search-input" style="padding: 8px 12px; cursor: pointer; width: 100%;">
+          <!-- Populated dynamically -->
+        </select>
+      </div>
+
+      <!-- Canvas Chart Box -->
+      <div style="background: rgba(0,0,0,0.45); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 16px; margin-bottom: 18px;">
+        <div style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 8px;">Historical & Predicted Fare Curve (₹)</div>
+        <div style="width: 100%; height: 260px; position: relative;">
+          <canvas id="priceTrendCanvas" style="width: 100%; height: 100%;"></canvas>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: var(--font-mono); color: #64748b; margin-top: 8px;">
+          <span>◀ PAST 45 DAYS (RECORDED)</span>
+          <span>30-DAY AI FORECAST ▶</span>
+        </div>
+      </div>
+
+      <!-- Best Day to Book Card -->
+      <div style="background: rgba(255, 215, 0, 0.06); border: 1px solid rgba(255, 215, 0, 0.25); border-radius: 16px; padding: 18px; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 11px; font-family: var(--font-mono); color: #94a3b8;">ACTIONABLE ADVICE</span>
+          <span id="price-action-badge" class="fr24-status-ticker" style="color: var(--emerald-accent); border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1);">BUY NOW</span>
+        </div>
+
+        <div style="margin: 12px 0;">
+          <div style="font-size: 12px; color: #94a3b8;">Cheapest Day to Book:</div>
+          <div id="price-best-day" style="font-family: var(--font-display); font-size: 28px; font-weight: 700; color: #fff;">Tuesday</div>
+        </div>
+
+        <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px;">
+          <div style="font-size: 11px; color: #94a3b8;">Estimated Maximum Savings:</div>
+          <div id="price-savings" style="font-family: var(--font-mono); font-size: 20px; font-weight: 700; color: var(--emerald-accent);">₹1,150</div>
+        </div>
+
+        <p id="price-rec-summary" style="font-size: 12px; color: #cbd5e1; line-height: 1.4;"></p>
+      </div>
+
+      <button id="btn-price-drop-alert" class="btn-fr24-primary" style="width: 100%;">
+        🔔 Enable Fare Drop Ping (SMS/WhatsApp)
+      </button>
+    </div>
+  </div>
+
+  <!-- Drawer 3: Deals & Recommendations -->
+  <div id="drawer-deals" class="fr24-drawer">
+    <div class="fr24-drawer-header">
+      <div>
+        <div class="drawer-title">Smart Picks & Verified Deals</div>
+        <div class="drawer-subtitle">Multi-factor convenience scoring & instant 1-click coupon discounts</div>
+      </div>
+      <button class="panel-close-btn" onclick="window.aeroApp.closeAllDrawers()">✕</button>
+    </div>
+
+    <div class="drawer-content">
+      <!-- Recommendations Section -->
+      <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 10px;">⭐ AeroTrack Choice Flight Picks</div>
+      <div id="recommendations-grid" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px;">
+        <!-- Populated dynamically -->
+      </div>
+
+      <!-- Verified Coupons Section -->
+      <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 10px;">⚡ 1-Click Promotional Coupons</div>
+      <div id="deals-coupons-grid" style="display: flex; flex-direction: column; gap: 10px;">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Drawer 4: Fleet Operations & Asset Logger -->
+  <div id="drawer-fleet" class="fr24-drawer">
+    <div class="fr24-drawer-header">
+      <div>
+        <div class="drawer-title">Fleet Operations & Management</div>
+        <div class="drawer-subtitle">Real-time telemetry stats, flight logger, and cluster synchronization</div>
+      </div>
+      <button class="panel-close-btn" onclick="window.aeroApp.closeAllDrawers()">✕</button>
+    </div>
+
+    <div class="drawer-content">
+      <!-- Telemetry Counters -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+        <div class="avionics-tile">
+          <div class="avionics-label">Total Tracked</div>
+          <div id="stat-fleet-total" class="avionics-value" style="color: var(--cyan-primary);">12</div>
+        </div>
+        <div class="avionics-tile">
+          <div class="avionics-label">Active Airborne</div>
+          <div id="stat-fleet-inair" class="avionics-value" style="color: var(--emerald-accent);">9</div>
+        </div>
+      </div>
+
+      <!-- Add Flight Form -->
+      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 18px; margin-bottom: 20px;">
+        <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px;">+ Log Airspace Flight Asset</div>
+        <form id="form-register-flight" style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <input type="text" id="reg-flight-num" class="fr24-search-input" placeholder="Flight No (e.g. AI-820)" required />
+            <input type="text" id="reg-origin" class="fr24-search-input" placeholder="Origin (e.g. DEL)" required />
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <input type="text" id="reg-destination" class="fr24-search-input" placeholder="Destination (e.g. BOM)" required />
+            <select id="reg-status" class="fr24-search-input" style="cursor: pointer;">
+              <option value="In Flight">In Flight</option>
+              <option value="On Schedule">On Schedule</option>
+              <option value="Boarding">Boarding</option>
+            </select>
+          </div>
+          <button type="submit" class="btn-fr24-primary" style="margin-top: 6px;">
+            Deploy Asset into Airspace
+          </button>
+        </form>
+      </div>
+
+      <!-- Fleet Table -->
+      <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 10px;">Live Fleet Matrix</div>
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--border-subtle); font-family: var(--font-mono); color: #64748b;">
+              <th style="padding: 8px;">Flight</th>
+              <th style="padding: 8px;">Carrier</th>
+              <th style="padding: 8px;">Corridor</th>
+              <th style="padding: 8px;">Altitude</th>
+              <th style="padding: 8px; text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="fleet-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       BOTTOM QUICK-SWITCH AIRCRAFT CAROUSEL
+       ======================================================================== -->
+  <div id="fr24-bottom-dock" class="fr24-bottom-dock">
+    <!-- Populated dynamically with flight chips -->
   </div>
 
   <!-- Digital Boarding Pass Modal -->
   <div id="modal-boarding-pass" class="cyber-modal-backdrop">
     <div class="cyber-modal-window" style="max-width: 680px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-        <span style="font-family: var(--font-display); font-size: 18px; font-weight: 700; color: #fff;">FLIGHT PASS PREVIEW</span>
+        <span style="font-family: var(--font-display); font-size: 18px; font-weight: 700; color: #fff;">DGCA BOARDING PASS</span>
         <button onclick="document.getElementById('modal-boarding-pass').classList.remove('active')" style="background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;">✕</button>
       </div>
       <div id="boarding-pass-modal-content"></div>
@@ -163,7 +406,7 @@
   <!-- External Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-  <!-- AeroTrack Engine Modules -->
+  <!-- AeroTrack Modules -->
   <script src="/js/audio-effects.js"></script>
   <script src="/js/standalone-store.js"></script>
   <script src="/js/radar.js"></script>

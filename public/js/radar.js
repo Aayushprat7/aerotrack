@@ -1,11 +1,12 @@
 // AeroTrack Radar & Geospatial Engine
-// Apple-Grade Dynamic Aircraft Tracking, Geospatial Arc Rendering & Auto-Follow
+// Flightradar24-Grade Colored Terrain & Satellite Maps, Yellow Aircraft Markers, Altitude Contrails & Dynamic Follow
 
 class AeroRadarEngine {
   constructor() {
     this.map = null;
     this.markers = {};
     this.routePolylines = {};
+    this.airportMarkers = [];
     this.selectedFlightId = null;
     this.selectedFlight = null;
     this.canvasSweep = null;
@@ -20,27 +21,51 @@ class AeroRadarEngine {
     // Camera Lock & Auto-Follow mode
     this.cameraLock = true;
     this.onCameraLockChange = null;
+    this.onFlightSelect = null;
     this.lastPingHeading = -1;
+
+    // Tile layers (100% Free, NO API KEY, NO WATERMARKS)
+    this.tileLayers = {};
+    this.activeLayerName = 'topo'; // 'topo' (colored terrain), 'satellite', 'dark'
   }
 
   init(mapContainerId, canvasSweepId) {
     // 1. Initialize Leaflet Map Centered over Indian Airspace
     this.map = L.map(mapContainerId, {
-      center: [21.5, 78.9],
+      center: [20.5937, 78.9629],
       zoom: 5,
       minZoom: 3,
-      maxZoom: 14,
+      maxZoom: 16,
       zoomControl: false,
       attributionControl: false
     });
 
-    // Dark Aerospace Map Tiles (CartoDB Dark Matter with high-res retina support)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      subdomains: 'abcd',
-      maxZoom: 19
-    }).addTo(this.map);
+    // 2. Setup High-Definition Colored Tile Layers (NO API KEY REQUIRED)
+    // Detailed Colored Topographic / Terrain Map (Vibrant Blue Oceans, Green Landmass, Mountains, Cities)
+    this.tileLayers.topo = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      subdomains: ['server', 'services']
+    });
 
-    // Disable camera lock if user manually drags map
+    // Photorealistic Satellite Imagery (High-Res Earth from Space)
+    this.tileLayers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19
+    });
+
+    // Deep Oceanic Aviation Map (Dark Blue Waters, Clean Landmass)
+    this.tileLayers.dark = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 16
+    });
+
+    // OpenStreetMap Standard (Full-Color Vivid Alternative)
+    this.tileLayers.osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    });
+
+    // Set Default Layer to Colored Topo / Terrain (Vibrant, Clear, Never Black-and-White!)
+    this.tileLayers[this.activeLayerName].addTo(this.map);
+
+    // Disable camera lock when user manually drags map
     this.map.on('dragstart', () => {
       if (this.cameraLock) {
         this.cameraLock = false;
@@ -48,13 +73,27 @@ class AeroRadarEngine {
       }
     });
 
-    // 2. Setup Radar Sweep Canvas Overlay
+    // 3. Render Major Aviation Hub Beacons
+    this.renderAirportBeacons();
+
+    // 4. Setup Radar Sweep Canvas Overlay
     this.canvasSweep = document.getElementById(canvasSweepId);
     if (this.canvasSweep) {
       this.resizeCanvas();
       window.addEventListener('resize', () => this.resizeCanvas());
       this.startRadarSweep();
     }
+  }
+
+  setMapLayer(layerName) {
+    if (!this.tileLayers[layerName] || layerName === this.activeLayerName) return;
+
+    this.map.removeLayer(this.tileLayers[this.activeLayerName]);
+    this.activeLayerName = layerName;
+    this.tileLayers[this.activeLayerName].addTo(this.map);
+
+    // If switching to satellite, add a subtle reference overlay for borders if desired
+    if (window.aeroAudio) window.aeroAudio.playClick();
   }
 
   setCameraLock(enabled) {
@@ -79,6 +118,40 @@ class AeroRadarEngine {
     this.cssHeight = rect.height;
     this.sweepCtx = this.canvasSweep.getContext('2d');
     this.sweepCtx.scale(dpr, dpr);
+  }
+
+  renderAirportBeacons() {
+    const airports = [
+      { code: 'DEL', name: 'Indira Gandhi Intl', city: 'Delhi', lat: 28.5562, lon: 77.1000 },
+      { code: 'BOM', name: 'Chhatrapati Shivaji Intl', city: 'Mumbai', lat: 19.0896, lon: 72.8656 },
+      { code: 'BLR', name: 'Kempegowda Intl', city: 'Bengaluru', lat: 13.1986, lon: 77.7066 },
+      { code: 'HYD', name: 'Rajiv Gandhi Intl', city: 'Hyderabad', lat: 17.2403, lon: 78.4294 },
+      { code: 'CCU', name: 'Netaji Subhash Intl', city: 'Kolkata', lat: 22.6547, lon: 88.4467 },
+      { code: 'MAA', name: 'Chennai Intl', city: 'Chennai', lat: 12.9941, lon: 80.1709 },
+      { code: 'GOI', name: 'Goa Dabolim / Mopa', city: 'Goa', lat: 15.3808, lon: 73.8314 },
+      { code: 'DXB', name: 'Dubai International', city: 'Dubai', lat: 25.2532, lon: 55.3657 },
+      { code: 'SIN', name: 'Singapore Changi', city: 'Singapore', lat: 1.3644, lon: 103.9915 },
+      { code: 'LHR', name: 'London Heathrow', city: 'London', lat: 51.4700, lon: -0.4543 },
+      { code: 'JFK', name: 'John F. Kennedy Intl', city: 'New York', lat: 40.6413, lon: -73.7781 }
+    ];
+
+    airports.forEach(ap => {
+      const html = `
+        <div class="fr24-airport-beacon" title="${ap.name} (${ap.code})">
+          <div class="beacon-pulse"></div>
+          <div class="beacon-core"></div>
+          <span class="beacon-code">${ap.code}</span>
+        </div>
+      `;
+      const icon = L.divIcon({
+        className: 'fr24-airport-marker',
+        html,
+        iconSize: [40, 24],
+        iconAnchor: [20, 12]
+      });
+      const marker = L.marker([ap.lat, ap.lon], { icon }).addTo(this.map);
+      this.airportMarkers.push(marker);
+    });
   }
 
   startRadarSweep() {
@@ -117,27 +190,27 @@ class AeroRadarEngine {
 
       const cx = this.radarCenterX;
       const cy = this.radarCenterY;
-      const radius = isTracking ? Math.min(w, h) * 0.32 : Math.min(w, h) * 0.44;
+      const radius = isTracking ? Math.min(w, h) * 0.30 : Math.min(w, h) * 0.42;
 
       // 1. Radar Range Rings centered on Tracked Aircraft
       ctx.lineWidth = 1;
       const ringSteps = [0.25, 0.5, 0.75, 1.0];
       ringSteps.forEach((step, idx) => {
         const r = radius * step;
-        ctx.strokeStyle = isTracking ? 'rgba(0, 240, 255, 0.12)' : 'rgba(0, 240, 255, 0.06)';
+        ctx.strokeStyle = isTracking ? 'rgba(0, 240, 255, 0.22)' : 'rgba(0, 240, 255, 0.08)';
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.stroke();
 
         if (isTracking && idx > 0) {
-          ctx.fillStyle = 'rgba(0, 240, 255, 0.4)';
-          ctx.font = '9px "JetBrains Mono", monospace';
+          ctx.fillStyle = 'rgba(0, 240, 255, 0.7)';
+          ctx.font = 'bold 9px "JetBrains Mono", monospace';
           ctx.fillText(`${idx * 15}NM`, cx + r + 4, cy - 2);
         }
       });
 
       // 2. Subtle Crosshair lines
-      ctx.strokeStyle = isTracking ? 'rgba(0, 240, 255, 0.15)' : 'rgba(0, 240, 255, 0.05)';
+      ctx.strokeStyle = isTracking ? 'rgba(0, 240, 255, 0.25)' : 'rgba(0, 240, 255, 0.06)';
       ctx.beginPath();
       ctx.moveTo(cx - radius, cy);
       ctx.lineTo(cx + radius, cy);
@@ -151,22 +224,22 @@ class AeroRadarEngine {
       ctx.rotate(this.sweepAngle);
 
       const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
-      grad.addColorStop(0, 'rgba(0, 240, 255, 0.35)');
-      grad.addColorStop(0.6, 'rgba(0, 240, 255, 0.1)');
+      grad.addColorStop(0, 'rgba(0, 240, 255, 0.45)');
+      grad.addColorStop(0.5, 'rgba(0, 240, 255, 0.15)');
       grad.addColorStop(1, 'rgba(0, 240, 255, 0)');
 
       ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.moveTo(0, 0);
-      ctx.arc(0, 0, radius, -0.4, 0);
+      ctx.arc(0, 0, radius, -0.42, 0);
       ctx.closePath();
       ctx.fill();
 
       // Leading beam line with neon glow
-      ctx.strokeStyle = 'rgba(0, 240, 255, 0.85)';
-      ctx.lineWidth = 1.6;
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.95)';
+      ctx.lineWidth = 1.8;
       ctx.shadowColor = '#00f0ff';
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = 10;
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(radius, 0);
@@ -176,13 +249,13 @@ class AeroRadarEngine {
       // 4. Aerospace HUD Lock-On Reticle (When Flight is Tracked)
       if (isTracking) {
         pulsePhase += 0.04;
-        const pulseSize = 26 + Math.sin(pulsePhase) * 3;
+        const pulseSize = 28 + Math.sin(pulsePhase) * 3;
 
         ctx.save();
         ctx.strokeStyle = '#00f0ff';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.8;
         ctx.shadowColor = '#00f0ff';
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 12;
 
         // 4 Aerospace Corner Brackets: [ + ]
         const bSize = 14;
@@ -216,34 +289,24 @@ class AeroRadarEngine {
         ctx.lineTo(cx + bOff, cy + bOff - bSize);
         ctx.stroke();
 
-        // Dynamic Telemetry HUD Tag attached to aircraft
-        ctx.fillStyle = 'rgba(5, 8, 17, 0.85)';
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
-        ctx.lineWidth = 1;
-        const tagW = 140;
-        const tagH = 34;
-        const tagX = cx + bOff + 10;
-        const tagY = cy - bOff;
+        // Vector Velocity Heading Indicator Line
+        const headingRad = ((this.selectedFlight.heading || 0) * Math.PI) / 180;
+        const vecLen = 45;
+        const vecX = cx + Math.sin(headingRad) * vecLen;
+        const vecY = cy - Math.cos(headingRad) * vecLen;
 
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        ctx.roundRect(tagX, tagY, tagW, tagH, 6);
-        ctx.fill();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(vecX, vecY);
         ctx.stroke();
-
-        ctx.fillStyle = '#00f0ff';
-        ctx.font = 'bold 11px "JetBrains Mono", monospace';
-        ctx.fillText(`✈ ${this.selectedFlight.flightNumber}`, tagX + 8, tagY + 14);
-
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '10px "JetBrains Mono", monospace';
-        const altFt = (this.selectedFlight.altitude || 0).toLocaleString();
-        const kts = this.selectedFlight.speed || 0;
-        ctx.fillText(`${altFt} FT • ${kts} KT`, tagX + 8, tagY + 27);
+        ctx.setLineDash([]);
 
         ctx.restore();
 
-        // Radar Sonar Audio Trigger: ping when sweep crosses aircraft heading
-        const headingRad = ((this.selectedFlight.heading || 0) * Math.PI) / 180;
+        // Sonar Audio Trigger
         const diff = Math.abs(this.sweepAngle - headingRad);
         if (diff < 0.06 && this.lastPingHeading !== Math.round(this.sweepAngle * 10)) {
           this.lastPingHeading = Math.round(this.sweepAngle * 10);
@@ -266,26 +329,36 @@ class AeroRadarEngine {
     renderSweep();
   }
 
-  createPlaneIcon(heading = 0, isSelected = false, flightNumber = '', isInternational = false) {
-    let color = isSelected ? '#00e676' : (isInternational ? '#a855f7' : '#00f0ff');
-    const size = isSelected ? 36 : 26;
-    const glow = isSelected ? '0 0 16px #00e676' : `0 0 10px ${color}`;
+  getAltitudeColor(altitude = 30000) {
+    if (altitude < 10000) return '#10b981'; // Green for takeoff / climb
+    if (altitude < 25000) return '#fbbf24'; // Warm Gold / Amber
+    if (altitude < 36000) return '#00f0ff'; // Electric Cyan / Cruise
+    return '#c084fc'; // Purple for high altitude 36k+
+  }
+
+  createFlightradarIcon(heading = 0, isSelected = false, flight = {}) {
+    // Flightradar24 iconic golden yellow plane icon
+    const altColor = this.getAltitudeColor(flight.altitude);
+    const planeColor = isSelected ? '#ffffff' : '#ffd700'; // Iconic Flightradar24 Gold
+    const size = isSelected ? 38 : 28;
+    const glow = isSelected ? '0 0 16px #00f0ff, 0 0 30px #00f0ff' : '0 2px 8px rgba(0,0,0,0.85), 0 0 10px rgba(255, 215, 0, 0.6)';
 
     const html = `
-      <div style="position: relative; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center;">
-        <div style="transform: rotate(${heading}deg); transition: transform 0.4s ease; display: flex; align-items: center; justify-content: center;">
-          <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${color}" style="filter: drop-shadow(${glow});">
+      <div class="fr24-plane-marker ${isSelected ? 'selected' : ''}" style="width: ${size}px; height: ${size}px;">
+        <div style="transform: rotate(${heading}deg); transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
+          <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${planeColor}" style="filter: drop-shadow(${glow});">
             <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
           </svg>
         </div>
-        <div style="position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%); font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; color: ${color}; white-space: nowrap; text-shadow: 0 0 6px #000; background: rgba(5,8,17,0.85); padding: 1px 5px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.18);">
-          ${flightNumber}
+        <div class="fr24-plane-callsign" style="border-left: 2px solid ${altColor};">
+          <span class="callsign-text">${flight.flightNumber}</span>
+          <span class="callsign-alt">${Math.round((flight.altitude || 0) / 1000)}k</span>
         </div>
       </div>
     `;
 
     return L.divIcon({
-      className: 'custom-plane-marker',
+      className: 'custom-fr24-marker',
       html,
       iconSize: [size, size],
       iconAnchor: [size / 2, size / 2]
@@ -309,7 +382,7 @@ class AeroRadarEngine {
       const A = Math.sin((1 - f) * d) / Math.sin(d);
       const B = Math.sin(f * d) / Math.sin(d);
       const x = A * Math.cos(rLat1) * Math.cos(rLon1) + B * Math.cos(rLat2) * Math.cos(rLon2);
-      const y = A * Math.cos(lat1) * Math.sin(rLon1) + B * Math.cos(rLat2) * Math.sin(rLon2);
+      const y = A * Math.cos(rLat1) * Math.sin(rLon1) + B * Math.cos(rLat2) * Math.sin(rLon2);
       const z = A * Math.sin(rLat1) + B * Math.sin(rLat2);
       const lat = Math.atan2(z, Math.sqrt(x * x + y * y));
       const lon = Math.atan2(y, x);
@@ -320,41 +393,42 @@ class AeroRadarEngine {
 
   renderFlights(flights, onSelectCallback) {
     if (!this.map) return;
+    this.onFlightSelect = onSelectCallback;
 
     flights.forEach(flight => {
       if (!flight.origin || !flight.destination || flight.currentLat === undefined) return;
 
       const isSelected = flight.id === this.selectedFlightId;
-      const isInternational = flight.flightType === 'international';
+      const altColor = this.getAltitudeColor(flight.altitude);
 
-      // 1. Draw or update Geodesic Flight Route
+      // 1. Draw or update Geodesic Flight Route with Altitude Gradient Color
       if (!this.routePolylines[flight.id]) {
         const arcCoords = this.calculateArcCoordinates(
           flight.origin.lat, flight.origin.lon,
           flight.destination.lat, flight.destination.lon
         );
 
-        const routeColor = isSelected ? '#00e676' : (isInternational ? 'rgba(168, 85, 247, 0.45)' : 'rgba(0, 240, 255, 0.35)');
-
         const polyline = L.polyline(arcCoords, {
-          color: routeColor,
-          weight: isSelected ? 3.5 : 1.8,
-          dashArray: isInternational ? '6, 6' : '4, 4',
+          color: isSelected ? '#00f0ff' : altColor,
+          opacity: isSelected ? 0.95 : 0.45,
+          weight: isSelected ? 3.5 : 2,
+          dashArray: isSelected ? null : '6, 6',
           smoothFactor: 1
         }).addTo(this.map);
 
         this.routePolylines[flight.id] = polyline;
       } else {
-        const routeColor = isSelected ? '#00e676' : (isInternational ? 'rgba(168, 85, 247, 0.45)' : 'rgba(0, 240, 255, 0.35)');
         this.routePolylines[flight.id].setStyle({
-          color: routeColor,
-          weight: isSelected ? 3.5 : 1.8
+          color: isSelected ? '#00f0ff' : altColor,
+          opacity: isSelected ? 0.95 : 0.45,
+          weight: isSelected ? 3.5 : 2,
+          dashArray: isSelected ? null : '6, 6'
         });
       }
 
       // 2. Draw or update Aircraft Marker
       const latLng = [flight.currentLat, flight.currentLon];
-      const icon = this.createPlaneIcon(flight.heading || 0, isSelected, flight.flightNumber, isInternational);
+      const icon = this.createFlightradarIcon(flight.heading || 0, isSelected, flight);
 
       if (this.markers[flight.id]) {
         this.markers[flight.id].setLatLng(latLng);
@@ -363,7 +437,7 @@ class AeroRadarEngine {
         const marker = L.marker(latLng, { icon }).addTo(this.map);
 
         marker.on('click', () => {
-          if (onSelectCallback) onSelectCallback(flight);
+          if (this.onFlightSelect) this.onFlightSelect(flight);
         });
 
         this.markers[flight.id] = marker;
