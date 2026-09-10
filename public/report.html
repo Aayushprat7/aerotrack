@@ -435,8 +435,11 @@
     </nav>
 
     <div class="fr24-controls">
-      <button onclick="window.print()" class="btn-report-action btn-report-print" title="Generate Clean PDF Report for Project Head">
-        🖨️ Export PDF
+      <a href="/AeroTrack_Project_Specification_Report.pdf" download="AeroTrack_Project_Specification_Report.pdf" class="btn-report-action btn-report-print" style="text-decoration: none;" title="Download Compiled PDF Document">
+        📥 Download PDF
+      </a>
+      <button onclick="window.print()" class="btn-report-action btn-report-outline" title="Print / PDF Preview">
+        🖨️ Print
       </button>
     </div>
   </header>
@@ -503,7 +506,10 @@
         </div>
 
         <div class="report-actions">
-          <button onclick="window.print()" class="btn-report-action btn-report-print">🖨️ Print / Save as PDF</button>
+          <a href="/AeroTrack_Project_Specification_Report.pdf" download="AeroTrack_Project_Specification_Report.pdf" class="btn-report-action btn-report-print" style="text-decoration: none;">
+            📥 Download PDF Report
+          </a>
+          <button onclick="window.print()" class="btn-report-action btn-report-outline">🖨️ Print View</button>
           <a href="index.html" class="btn-report-action btn-report-outline">🛰️ Open Live Radar Map</a>
           <a href="flights.html" class="btn-report-action btn-report-outline">📋 Skyscanner Flight Search</a>
         </div>
