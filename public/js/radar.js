@@ -27,6 +27,11 @@ class AeroRadarEngine {
     // Tile layers (100% Free, NO API KEY, NO WATERMARKS)
     this.tileLayers = {};
     this.activeLayerName = 'topo'; // 'topo' (colored terrain), 'satellite', 'dark'
+
+    // Filtering & Decluttering Mode: 'focused' (default: selected flight + route), 'corridor', or 'all'
+    this.filterMode = 'focused';
+    this.activeCorridor = null; // { origin: 'DEL', destination: 'BOM' }
+    this.onFocusChange = null;
   }
 
   init(mapContainerId, canvasSweepId) {
@@ -395,35 +400,87 @@ class AeroRadarEngine {
     if (!this.map) return;
     this.onFlightSelect = onSelectCallback;
 
-    flights.forEach(flight => {
+    // 1. Determine suitable flights based on active filter mode
+    let suitableFlights = flights;
+
+    if (this.filterMode === 'corridor' && this.activeCorridor) {
+      const orig = this.activeCorridor.origin?.toUpperCase();
+      const dest = this.activeCorridor.destination?.toUpperCase();
+      suitableFlights = flights.filter(f => {
+        const fOrig = f.origin?.code?.toUpperCase();
+        const fDest = f.destination?.code?.toUpperCase();
+        const matchesForward = (!orig || fOrig === orig) && (!dest || fDest === dest);
+        const matchesReverse = (!orig || fDest === orig) && (!dest || fOrig === dest);
+        return matchesForward || matchesReverse || f.id === this.selectedFlightId;
+      });
+      if (suitableFlights.length === 0 && this.selectedFlight) {
+        suitableFlights = [this.selectedFlight];
+      }
+    } else if (this.filterMode === 'focused') {
+      const active = flights.find(f => f.id === this.selectedFlightId) || this.selectedFlight;
+      if (active && active.origin && active.destination) {
+        const orig = active.origin.code?.toUpperCase();
+        const dest = active.destination.code?.toUpperCase();
+        // Show the selected flight + flights sharing the exact travel corridor
+        suitableFlights = flights.filter(f => {
+          if (f.id === active.id) return true;
+          const fOrig = f.origin?.code?.toUpperCase();
+          const fDest = f.destination?.code?.toUpperCase();
+          return (fOrig === orig && fDest === dest) || (fOrig === dest && fDest === orig);
+        });
+      } else if (active) {
+        suitableFlights = [active];
+      } else if (flights.length > 0) {
+        // Fallback: pick the first flight to avoid 400-plane swarm
+        suitableFlights = [flights[0]];
+      }
+    }
+
+    // 2. Render suitable flights & clean geodesic trajectories
+    suitableFlights.forEach(flight => {
       if (!flight.origin || !flight.destination || flight.currentLat === undefined) return;
 
       const isSelected = flight.id === this.selectedFlightId;
       const altColor = this.getAltitudeColor(flight.altitude);
 
-      // 1. Draw Geodesic Flight Route for Selected Flight
-      if (isSelected && flight.origin && flight.destination) {
+      // Draw Geodesic Flight Route
+      if (flight.origin && flight.destination) {
         const arcCoords = this.calculateArcCoordinates(
           flight.origin.lat, flight.origin.lon,
           flight.destination.lat, flight.destination.lon
         );
 
-        if (!this.routePolylines[flight.id]) {
-          this.routePolylines[flight.id] = L.polyline(arcCoords, {
-            color: '#00f0ff',
-            opacity: 0.95,
-            weight: 3,
-            smoothFactor: 1
-          }).addTo(this.map);
-        } else {
-          this.routePolylines[flight.id].setLatLngs(arcCoords);
+        if (isSelected) {
+          if (!this.routePolylines[flight.id]) {
+            this.routePolylines[flight.id] = L.polyline(arcCoords, {
+              color: '#00f0ff',
+              opacity: 0.95,
+              weight: 3.5,
+              smoothFactor: 1
+            }).addTo(this.map);
+          } else {
+            this.routePolylines[flight.id].setLatLngs(arcCoords);
+          }
+        } else if (this.filterMode === 'focused' || this.filterMode === 'corridor') {
+          // Corridor partner flight route: elegant dashed amber arc
+          if (!this.routePolylines[flight.id]) {
+            this.routePolylines[flight.id] = L.polyline(arcCoords, {
+              color: '#ffd700',
+              opacity: 0.45,
+              weight: 2,
+              dashArray: '5, 8',
+              smoothFactor: 1
+            }).addTo(this.map);
+          } else {
+            this.routePolylines[flight.id].setLatLngs(arcCoords);
+          }
+        } else if (this.routePolylines[flight.id]) {
+          this.map.removeLayer(this.routePolylines[flight.id]);
+          delete this.routePolylines[flight.id];
         }
-      } else if (this.routePolylines[flight.id]) {
-        this.map.removeLayer(this.routePolylines[flight.id]);
-        delete this.routePolylines[flight.id];
       }
 
-      // 2. Draw or update Aircraft Marker
+      // Draw or update Aircraft Marker
       const latLng = [flight.currentLat, flight.currentLon];
       const icon = this.createFlightradarIcon(flight.heading || 0, isSelected, flight);
 
@@ -449,18 +506,10 @@ class AeroRadarEngine {
       }
     });
 
-    // Auto-center camera if camera lock is active
-    if (this.cameraLock && this.selectedFlight && this.selectedFlight.currentLat !== undefined) {
-      this.map.panTo([this.selectedFlight.currentLat, this.selectedFlight.currentLon], {
-        animate: true,
-        duration: 0.8
-      });
-    }
-
-    // Purge obsolete markers
-    const currentFlightIds = new Set(flights.map(f => f.id));
+    // 3. Purge obsolete or non-suitable markers from the map
+    const suitableFlightIds = new Set(suitableFlights.map(f => f.id));
     Object.keys(this.markers).forEach(id => {
-      if (!currentFlightIds.has(id)) {
+      if (!suitableFlightIds.has(id)) {
         this.map.removeLayer(this.markers[id]);
         delete this.markers[id];
         if (this.routePolylines[id]) {
@@ -469,19 +518,72 @@ class AeroRadarEngine {
         }
       }
     });
+
+    // 4. Auto-center camera if camera lock is active
+    if (this.cameraLock && this.selectedFlight && this.selectedFlight.currentLat !== undefined) {
+      this.map.panTo([this.selectedFlight.currentLat, this.selectedFlight.currentLon], {
+        animate: true,
+        duration: 0.8
+      });
+    }
+
+    // 5. Fire focus change event for HUD banner
+    if (this.onFocusChange) {
+      const active = flights.find(f => f.id === this.selectedFlightId) || this.selectedFlight;
+      this.onFocusChange({
+        mode: this.filterMode,
+        corridor: this.activeCorridor,
+        selectedFlight: active,
+        suitableCount: suitableFlights.length,
+        totalAirspaceCount: flights.length
+      });
+    }
   }
 
   focusFlight(flight) {
     if (!this.map || !flight || flight.currentLat === undefined) return;
     this.selectedFlightId = flight.id;
     this.selectedFlight = flight;
+    this.filterMode = 'focused';
     this.cameraLock = true;
     if (this.onCameraLockChange) this.onCameraLockChange(true);
 
-    this.map.flyTo([flight.currentLat, flight.currentLon], 7, {
-      duration: 1.2,
-      easeLinearity: 0.25
-    });
+    if (flight.origin?.lat && flight.destination?.lat) {
+      const bounds = L.latLngBounds([
+        [flight.origin.lat, flight.origin.lon],
+        [flight.destination.lat, flight.destination.lon],
+        [flight.currentLat, flight.currentLon]
+      ]);
+      this.map.fitBounds(bounds, { padding: [70, 70], maxZoom: 8, animate: true });
+    } else {
+      this.map.flyTo([flight.currentLat, flight.currentLon], 7, {
+        duration: 1.2,
+        easeLinearity: 0.25
+      });
+    }
+  }
+
+  setCorridorFilter(originCode, destinationCode) {
+    if (!originCode && !destinationCode) {
+      this.activeCorridor = null;
+      this.filterMode = 'all';
+    } else {
+      this.activeCorridor = { origin: originCode, destination: destinationCode };
+      this.filterMode = 'corridor';
+    }
+  }
+
+  showAllAirspace() {
+    this.filterMode = 'all';
+    this.activeCorridor = null;
+    this.map.flyTo([20.5937, 78.9629], 5, { duration: 1.0 });
+  }
+
+  focusSelectedRoute() {
+    this.filterMode = 'focused';
+    if (this.selectedFlight) {
+      this.focusFlight(this.selectedFlight);
+    }
   }
 }
 

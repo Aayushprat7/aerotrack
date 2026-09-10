@@ -37,12 +37,30 @@ class AeroApp {
       extraLegroom: false,
       digiYatra: false
     };
+
+    // Skyscanner Portal State
+    this.skyscannerState = {
+      origin: 'DEL',
+      destination: 'BOM',
+      departDate: '',
+      returnDate: '',
+      tripType: 'oneway',
+      cabin: '1-economy',
+      directOnly: true,
+      activeSortTab: 'cheapest',
+      activeDateOffset: 0
+    };
+    this.boardingCountdownTimer = null;
+    this.skyscannerFlights = [];
   }
 
   async init() {
-    // 1. Initialize Radar Geospatial Engine
-    this.radar = new window.AeroRadarEngine();
-    this.radar.init('flight-radar-map', 'radar-sweep-canvas');
+    // 1. Initialize Radar Geospatial Engine if map container is on this page
+    if (window.AeroRadarEngine && document.getElementById('flight-radar-map')) {
+      this.radar = new window.AeroRadarEngine();
+      this.radar.init('flight-radar-map', 'radar-sweep-canvas');
+      this.radar.onFocusChange = (info) => this.updateRadarFocusHUD(info);
+    }
 
     // 2. Setup Top Command Bar & Search
     this.setupTopCommandBar();
@@ -59,16 +77,32 @@ class AeroApp {
       this.loadStats()
     ]);
 
-    // 5. Select default flight and open inspector
-    if (this.flights.length > 0) {
+    // 5. Parse URL parameters for direct route/corridor or flight focus
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetFlightId = urlParams.get('flightId');
+    const targetOrigin = urlParams.get('origin');
+    const targetDest = urlParams.get('destination');
+
+    if (targetOrigin && targetDest && this.radar) {
+      this.radar.setCorridorFilter(targetOrigin, targetDest);
+    }
+
+    if (targetFlightId) {
+      const match = this.flights.find(f => f.id === targetFlightId);
+      if (match) this.selectFlight(match.id);
+      else if (this.flights.length > 0) this.selectFlight(this.flights[0].id);
+    } else if (this.flights.length > 0) {
       const flight = this.flights.find(f => f.id === this.selectedFlightId) || this.flights[0];
       this.selectFlight(flight.id);
     }
 
-    // 6. Check if URL requested a specific drawer (e.g. /flights or #roster)
+    // 6. Setup Skyscanner Portal (if on flights.html)
+    this.setupSkyscannerPortal();
+
+    // 7. Check if URL requested a specific drawer (e.g. /flights or #roster)
     this.checkInitialDrawer();
 
-    // 7. Start live polling
+    // 8. Start live polling
     this.startPolling();
   }
 
@@ -284,6 +318,58 @@ class AeroApp {
     if (!this.radar) return;
     this.radar.setCameraLock(!this.radar.cameraLock);
     this.showToast(this.radar.cameraLock ? '🎯 Camera Locked on Aircraft' : '🔓 Camera Unlocked for Free Pan');
+  }
+
+  showAllAirspace() {
+    if (this.radar) {
+      this.radar.showAllAirspace();
+      this.showToast('🌐 Radar: Showing All Airspace Fleet');
+      this.loadFlights();
+    }
+  }
+
+  focusSelectedRoute() {
+    if (this.radar) {
+      this.radar.focusSelectedRoute();
+      this.showToast('🎯 Radar: Focused on Selected Travel Route');
+      this.loadFlights();
+    }
+  }
+
+  setRadarCorridor(orig, dest) {
+    if (this.radar) {
+      this.radar.setCorridorFilter(orig, dest);
+      this.showToast(`🎯 Radar: Filtering Corridor ${orig} ➔ ${dest}`);
+      this.loadFlights();
+    }
+  }
+
+  updateRadarFocusHUD(info) {
+    const banner = document.getElementById('radar-focus-banner');
+    if (!banner) return;
+
+    if (info.mode === 'all') {
+      banner.className = 'radar-focus-banner all-airspace';
+      banner.innerHTML = `
+        <div class="focus-banner-left">
+          <span class="focus-pulse-dot amber"></span>
+          <span class="focus-title">ALL SUB-CONTINENT AIRSPACE (<strong>${info.totalAirspaceCount}</strong> AIRCRAFT ACTIVE)</span>
+        </div>
+        <button class="btn-focus-toggle" onclick="window.aeroApp.focusSelectedRoute()">🎯 Focus Selected Travel</button>
+      `;
+    } else {
+      const orig = info.corridor?.origin || info.selectedFlight?.origin?.code || 'DEL';
+      const dest = info.corridor?.destination || info.selectedFlight?.destination?.code || 'BOM';
+      const flightNo = info.selectedFlight?.flightNumber || 'ROUTE';
+      banner.className = 'radar-focus-banner';
+      banner.innerHTML = `
+        <div class="focus-banner-left">
+          <span class="focus-pulse-dot"></span>
+          <span class="focus-title">FOCUSED TRAVEL: <strong style="color: #00f0ff;">${orig} ➔ ${dest}</strong> &bull; <span style="color: #ffd700;">${flightNo}</span> (${info.suitableCount} suitable flights)</span>
+        </div>
+        <button class="btn-focus-toggle" onclick="window.aeroApp.showAllAirspace()">🌐 Show All Airspace (${info.totalAirspaceCount})</button>
+      `;
+    }
   }
 
   /* ========================================================================
@@ -528,6 +614,12 @@ class AeroApp {
     const container = document.getElementById('roster-cards-container');
     if (!container) return;
 
+    // If on Skyscanner flight search page, use dedicated Skyscanner renderer
+    if (document.getElementById('skyscanner-search-form')) {
+      this.renderSkyscannerResults();
+      return;
+    }
+
     if (this.flights.length === 0) {
       container.innerHTML = `
         <div style="text-align: center; padding: 40px; color: #94a3b8;">
@@ -564,6 +656,693 @@ class AeroApp {
         </div>
       `;
     }).join('');
+  }
+
+  /* ========================================================================
+     Skyscanner Portal Controller & Desktop Boarding HUD Engine
+     ======================================================================== */
+  setupSkyscannerPortal() {
+    const searchForm = document.getElementById('skyscanner-search-form');
+    if (!searchForm) return;
+
+    // Default departure date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const departInput = document.getElementById('search-date-depart');
+    if (departInput && !departInput.value) {
+      departInput.value = tomorrowStr;
+      this.skyscannerState.departDate = tomorrowStr;
+    }
+
+    // Default return date to 4 days later
+    const returnDate = new Date();
+    returnDate.setDate(returnDate.getDate() + 5);
+    const returnInput = document.getElementById('search-date-return');
+    if (returnInput && !returnInput.value) {
+      returnInput.value = returnDate.toISOString().split('T')[0];
+      this.skyscannerState.returnDate = returnInput.value;
+    }
+
+    // Origin and Destination badge listeners
+    const originSel = document.getElementById('search-origin');
+    const destSel = document.getElementById('search-destination');
+    if (originSel) {
+      originSel.addEventListener('change', (e) => {
+        const badge = document.getElementById('iata-badge-origin');
+        if (badge) badge.textContent = e.target.value;
+        this.skyscannerState.origin = e.target.value;
+      });
+    }
+    if (destSel) {
+      destSel.addEventListener('change', (e) => {
+        const badge = document.getElementById('iata-badge-dest');
+        if (badge) badge.textContent = e.target.value;
+        this.skyscannerState.destination = e.target.value;
+      });
+    }
+
+    // Bind form submission
+    searchForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.executeSkyscannerSearch();
+    });
+
+    // Bind Sidebar Filters
+    const stopsSel = document.getElementById('roster-stops');
+    if (stopsSel) {
+      stopsSel.addEventListener('change', (e) => {
+        this.filters.stops = e.target.value;
+        this.renderSkyscannerResults();
+      });
+    }
+
+    const timeSel = document.getElementById('roster-time');
+    if (timeSel) {
+      timeSel.addEventListener('change', (e) => {
+        this.filters.timeOfDay = e.target.value;
+        this.renderSkyscannerResults();
+      });
+    }
+
+    const convSlider = document.getElementById('roster-conv-slider');
+    if (convSlider) {
+      convSlider.addEventListener('input', (e) => {
+        this.filters.minConvenience = e.target.value;
+        const val = document.getElementById('roster-conv-val');
+        if (val) val.textContent = `${e.target.value}%+`;
+        this.renderSkyscannerResults();
+      });
+    }
+
+    // Bind amenity toggle buttons
+    ['digiyatra', 'wifi', 'legroom'].forEach(amenity => {
+      const btn = document.getElementById(`btn-amenity-${amenity}`);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          btn.classList.toggle('active');
+          if (amenity === 'digiyatra') this.filters.digiYatra = btn.classList.contains('active');
+          if (amenity === 'wifi') this.filters.wifi = btn.classList.contains('active');
+          if (amenity === 'legroom') this.filters.extraLegroom = btn.classList.contains('active');
+          this.renderSkyscannerResults();
+        });
+      }
+    });
+
+    // Check URL parameters for preset searches
+    const urlParams = new URLSearchParams(window.location.search);
+    const qOrigin = urlParams.get('origin');
+    const qDest = urlParams.get('destination');
+    if (qOrigin && originSel) {
+      originSel.value = qOrigin.toUpperCase();
+      const badge = document.getElementById('iata-badge-origin');
+      if (badge) badge.textContent = qOrigin.toUpperCase();
+      this.skyscannerState.origin = qOrigin.toUpperCase();
+    }
+    if (qDest && destSel) {
+      destSel.value = qDest.toUpperCase();
+      const badge = document.getElementById('iata-badge-dest');
+      if (badge) badge.textContent = qDest.toUpperCase();
+      this.skyscannerState.destination = qDest.toUpperCase();
+    }
+
+    // Execute initial search so user is greeted with rich Skyscanner results
+    this.executeSkyscannerSearch();
+  }
+
+  setTripType(type) {
+    this.skyscannerState.tripType = type;
+    const pillOneWay = document.getElementById('pill-trip-oneway');
+    const pillRound = document.getElementById('pill-trip-round');
+    const returnGroup = document.getElementById('group-date-return');
+    const returnInput = document.getElementById('search-date-return');
+
+    if (pillOneWay && pillRound) {
+      if (type === 'oneway') {
+        pillOneWay.classList.add('active');
+        pillRound.classList.remove('active');
+        if (returnGroup) returnGroup.style.opacity = '0.4';
+        if (returnInput) returnInput.disabled = true;
+      } else {
+        pillOneWay.classList.remove('active');
+        pillRound.classList.add('active');
+        if (returnGroup) returnGroup.style.opacity = '1';
+        if (returnInput) returnInput.disabled = false;
+      }
+    }
+    if (window.aeroAudio) window.aeroAudio.playClick();
+  }
+
+  swapOriginDestination() {
+    const originSel = document.getElementById('search-origin');
+    const destSel = document.getElementById('search-destination');
+    if (!originSel || !destSel) return;
+
+    const temp = originSel.value;
+    originSel.value = destSel.value;
+    destSel.value = temp;
+
+    this.skyscannerState.origin = originSel.value;
+    this.skyscannerState.destination = destSel.value;
+
+    const badgeOrig = document.getElementById('iata-badge-origin');
+    const badgeDest = document.getElementById('iata-badge-dest');
+    if (badgeOrig) badgeOrig.textContent = originSel.value;
+    if (badgeDest) badgeDest.textContent = destSel.value;
+
+    if (window.aeroAudio) window.aeroAudio.playClick();
+    this.executeSkyscannerSearch();
+  }
+
+  quickSelectCorridor(origin, destination) {
+    const originSel = document.getElementById('search-origin');
+    const destSel = document.getElementById('search-destination');
+    if (originSel) {
+      originSel.value = origin;
+      const badge = document.getElementById('iata-badge-origin');
+      if (badge) badge.textContent = origin;
+      this.skyscannerState.origin = origin;
+    }
+    if (destSel) {
+      destSel.value = destination;
+      const badge = document.getElementById('iata-badge-dest');
+      if (badge) badge.textContent = destination;
+      this.skyscannerState.destination = destination;
+    }
+    if (window.aeroAudio) window.aeroAudio.playClick();
+    this.executeSkyscannerSearch();
+  }
+
+  toggleSearchHero() {
+    const hero = document.getElementById('skyscanner-search-section');
+    if (!hero) return;
+    hero.scrollIntoView({ behavior: 'smooth' });
+    const originSel = document.getElementById('search-origin');
+    if (originSel) originSel.focus();
+  }
+
+  executeSkyscannerSearch() {
+    if (window.aeroAudio) window.aeroAudio.playClick();
+
+    const originSel = document.getElementById('search-origin');
+    const destSel = document.getElementById('search-destination');
+    const departInput = document.getElementById('search-date-depart');
+    const directOnlyBox = document.getElementById('search-direct-only');
+
+    const origin = originSel ? originSel.value : 'DEL';
+    const dest = destSel ? destSel.value : 'BOM';
+    const departDate = departInput ? departInput.value : '';
+    const directOnly = directOnlyBox ? directOnlyBox.checked : true;
+
+    this.skyscannerState.origin = origin;
+    this.skyscannerState.destination = dest;
+    this.skyscannerState.departDate = departDate;
+    this.skyscannerState.directOnly = directOnly;
+
+    // Update Summary Banner
+    const summaryRoute = document.getElementById('summary-route-text');
+    const summaryMeta = document.getElementById('summary-meta-text');
+    if (summaryRoute) {
+      const origText = originSel ? originSel.options[originSel.selectedIndex]?.text.split('—')[0].trim() : origin;
+      const destText = destSel ? destSel.options[destSel.selectedIndex]?.text.split('—')[0].trim() : dest;
+      summaryRoute.textContent = `${origText} ➔ ${destText}`;
+    }
+    if (summaryMeta) {
+      const friendlyDate = departDate ? new Date(departDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Tomorrow';
+      summaryMeta.textContent = `${friendlyDate} • 1 Adult • Economy Class • ${directOnly ? 'Direct Non-Stop Priority' : 'All Flight Paths'}`;
+    }
+
+    // Render 7-Day Fare Carousel Strip
+    this.renderFareDateStrip(departDate);
+
+    // Filter or synthesize competitive flights for this corridor
+    let matched = this.flights.filter(f => {
+      const origMatch = f.origin?.code === origin || (f.origin?.city && f.origin.city.toUpperCase().includes(origin));
+      const destMatch = f.destination?.code === dest || (f.destination?.city && f.destination.city.toUpperCase().includes(dest));
+      return origMatch && destMatch;
+    });
+
+    // If fewer than 2 flights exist in seed for this exact corridor, dynamically generate realistic competitive options
+    if (matched.length < 2) {
+      const isDomestic = !['DXB', 'LHR', 'JFK', 'SIN'].includes(origin) && !['DXB', 'LHR', 'JFK', 'SIN'].includes(dest);
+      const baseFare = isDomestic ? 4350 : 38500;
+
+      const approxDistances = {
+        'DEL-BOM': 1150, 'BOM-DEL': 1150,
+        'DEL-BLR': 1740, 'BLR-DEL': 1740,
+        'BOM-BLR': 840,  'BLR-BOM': 840,
+        'BOM-GOI': 435,  'GOI-BOM': 435,
+        'DEL-HYD': 1260, 'HYD-DEL': 1260,
+        'DEL-CCU': 1310, 'CCU-DEL': 1310,
+        'DEL-MAA': 1760, 'MAA-DEL': 1760,
+        'BLR-MAA': 290,  'MAA-BLR': 290,
+        'BOM-DXB': 1930, 'DXB-BOM': 1930,
+        'DEL-DXB': 2200, 'DXB-DEL': 2200,
+        'DEL-LHR': 6710, 'LHR-DEL': 6710,
+        'MAA-SIN': 2920, 'SIN-MAA': 2920,
+        'DEL-SIN': 4150, 'SIN-DEL': 4150
+      };
+      const key = `${origin}-${dest}`;
+      const dist = approxDistances[key] || (isDomestic ? 1050 : 3600);
+      let durationMinutes = 70;
+      if (dist < 450) durationMinutes = Math.round(45 + (dist / 11.5));
+      else if (dist < 1500) durationMinutes = Math.round(38 + (dist / 12.8));
+      else durationMinutes = Math.round(35 + (dist / 13.2));
+      durationMinutes = Math.max(45, durationMinutes);
+
+      const durationHours = Math.floor(durationMinutes / 60);
+      const durationMins = durationMinutes % 60;
+      const durationStr = `${durationHours}h ${durationMins.toString().padStart(2, '0')}m`;
+
+      const computeArr = (depStr, durMins) => {
+        const [timePart, ampm] = depStr.split(' ');
+        let [h, m] = timePart.split(':').map(Number);
+        if (ampm === 'PM' && h !== 12) h += 12;
+        if (ampm === 'AM' && h === 12) h = 0;
+        const total = (h * 60 + m + durMins) % 1440;
+        let arrH = Math.floor(total / 60);
+        const arrM = total % 60;
+        const p = arrH >= 12 ? 'PM' : 'AM';
+        arrH = arrH % 12 || 12;
+        return `${arrH.toString().padStart(2, '0')}:${arrM.toString().padStart(2, '0')} ${p}`;
+      };
+
+      const synthTemplates = [
+        { airline: 'IndiGo', code: '6E', no: '2041', dep: '06:10 AM', arr: computeArr('06:10 AM', durationMinutes), price: baseFare, score: 94, gate: '24B', legroom: true, wifi: false, digi: true },
+        { airline: 'Air India', code: 'AI', no: '887', dep: '09:35 AM', arr: computeArr('09:35 AM', durationMinutes), price: baseFare + 520, score: 96, gate: '16', legroom: true, wifi: true, digi: true },
+        { airline: 'Akasa Air', code: 'QP', no: '1102', dep: '02:40 PM', arr: computeArr('02:40 PM', durationMinutes), price: baseFare - 390, score: 90, gate: '08', legroom: false, wifi: false, digi: true },
+        { airline: 'Vistara', code: 'UK', no: '993', dep: '07:15 PM', arr: computeArr('07:15 PM', durationMinutes), price: baseFare + 850, score: 98, gate: '29', legroom: true, wifi: true, digi: true },
+        { airline: 'SpiceJet', code: 'SG', no: '422', dep: '10:25 PM', arr: computeArr('10:25 PM', durationMinutes), price: baseFare - 550, score: 88, gate: '12', legroom: false, wifi: false, digi: false }
+      ];
+
+      const synthFlights = synthTemplates.map((t, idx) => ({
+        id: `fl-dyn-${origin.toLowerCase()}-${dest.toLowerCase()}-${idx}`,
+        flightNumber: `${t.code}-${t.no}`,
+        airline: t.airline,
+        airlineCode: t.code,
+        flightType: isDomestic ? 'domestic' : 'international',
+        origin: { code: origin, name: `${origin} International`, city: origin },
+        destination: { code: dest, name: `${dest} International`, city: dest },
+        aircraft: isDomestic ? 'Airbus A321neo' : 'Boeing 787-9 Dreamliner',
+        departureTime: t.dep,
+        arrivalTime: t.arr,
+        duration: durationStr,
+        durationMinutes,
+        stops: 0,
+        stopDetails: 'Direct Non-stop',
+        status: idx === 0 ? 'Boarding' : 'On Schedule',
+        terminal: 'T2',
+        gate: t.gate,
+        baggageClaim: 'Belt 4',
+        progress: 0.0,
+        altitude: 0,
+        speed: 0,
+        basePrice: t.price,
+        currentPrice: t.price,
+        currency: 'INR',
+        seatsAvailable: 18 + idx * 4,
+        rating: 4.6,
+        amenities: {
+          wifi: t.wifi,
+          extraLegroom: t.legroom,
+          meals: 'Complimentary Hot Gourmet Meal',
+          power: true,
+          usb: true,
+          digiYatra: t.digi,
+          baggage: isDomestic ? '15kg Check-in + 7kg Cabin' : '30kg Check-in + 7kg Cabin'
+        },
+        convenienceScore: t.score,
+        convenienceHighlights: ['DigiYatra Biometric Fast-Track', 'Punctual Non-Stop', 'Great Value Fare']
+      }));
+
+      // Merge unique matched and synth flights
+      const existingIds = new Set(matched.map(m => m.id));
+      synthFlights.forEach(sf => {
+        if (!existingIds.has(sf.id)) matched.push(sf);
+      });
+    }
+
+    this.skyscannerFlights = matched;
+    this.renderSkyscannerResults();
+  }
+
+  renderFareDateStrip(baseDateStr) {
+    const container = document.getElementById('fare-date-strip');
+    if (!container) return;
+
+    const baseDate = baseDateStr ? new Date(baseDateStr) : new Date();
+    if (isNaN(baseDate.getTime())) baseDate.setTime(Date.now() + 86400000);
+
+    const baseFare = this.skyscannerFlights[0]?.currentPrice || 4350;
+
+    // Daily price volatility multipliers for 7 days (-3 days to +3 days)
+    const deltas = [-3, -2, -1, 0, 1, 2, 3];
+    const multipliers = [1.08, 0.94, 0.98, 1.0, 1.15, 1.22, 1.04];
+
+    container.innerHTML = deltas.map((delta, i) => {
+      const d = new Date(baseDate);
+      d.setDate(d.getDate() + delta);
+      const isSelected = delta === this.skyscannerState.activeDateOffset;
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const dayNum = d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+      const price = Math.round(baseFare * multipliers[i]);
+
+      return `
+        <div class="fare-date-pill ${isSelected ? 'active' : ''}" onclick="window.aeroApp.selectFareDateOffset(${delta}, '${d.toISOString().split('T')[0]}')">
+          <span class="fare-date-day">${dayName}</span>
+          <span class="fare-date-num">${dayNum}</span>
+          <span class="fare-date-price">₹${price.toLocaleString('en-IN')}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  selectFareDateOffset(offset, dateStr) {
+    this.skyscannerState.activeDateOffset = offset;
+    this.skyscannerState.departDate = dateStr;
+    const dateInput = document.getElementById('search-date-depart');
+    if (dateInput) dateInput.value = dateStr;
+    if (window.aeroAudio) window.aeroAudio.playClick();
+    this.executeSkyscannerSearch();
+  }
+
+  setSortTab(tab) {
+    this.skyscannerState.activeSortTab = tab;
+    ['cheapest', 'best', 'fastest'].forEach(t => {
+      const el = document.getElementById(`tab-sort-${t}`);
+      if (el) {
+        if (t === tab) el.classList.add('active');
+        else el.classList.remove('active');
+      }
+    });
+    if (window.aeroAudio) window.aeroAudio.playClick();
+    this.renderSkyscannerResults();
+  }
+
+  calculateBoardingTimes(departureTimeStr) {
+    if (!departureTimeStr) return { boardingTime: '06:15 AM', gateCloseTime: '06:40 AM', departureTime: '07:00 AM' };
+    try {
+      const parts = departureTimeStr.trim().split(' ');
+      const [hoursRaw, minsRaw] = parts[0].split(':').map(Number);
+      const period = parts[1] ? parts[1].toUpperCase() : 'AM';
+      let hours = hoursRaw;
+      if (period === 'PM' && hours !== 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+
+      const depMinutes = hours * 60 + minsRaw;
+      let boardMinutes = depMinutes - 45;
+      if (boardMinutes < 0) boardMinutes += 1440;
+      let gateCloseMinutes = depMinutes - 20;
+      if (gateCloseMinutes < 0) gateCloseMinutes += 1440;
+
+      const formatTime = (totalMins) => {
+        let h = Math.floor(totalMins / 60) % 24;
+        const m = totalMins % 60;
+        const p = h >= 12 ? 'PM' : 'AM';
+        if (h > 12) h -= 12;
+        if (h === 0) h = 12;
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${p}`;
+      };
+
+      return {
+        boardingTime: formatTime(boardMinutes),
+        gateCloseTime: formatTime(gateCloseMinutes),
+        departureTime: departureTimeStr
+      };
+    } catch(e) {
+      return { boardingTime: '06:15 AM', gateCloseTime: '06:40 AM', departureTime: departureTimeStr || '07:00 AM' };
+    }
+  }
+
+  updateDesktopBoardingHUD(flight) {
+    if (!flight) return;
+    const times = this.calculateBoardingTimes(flight.departureTime);
+
+    const elFlightNo = document.getElementById('desktop-hud-flight-num');
+    const elCorridor = document.getElementById('desktop-hud-corridor');
+    const elBoardTime = document.getElementById('desktop-hud-boarding-time');
+
+    if (elFlightNo) elFlightNo.textContent = flight.flightNumber;
+    if (elCorridor) elCorridor.textContent = `${flight.origin?.code} ➔ ${flight.destination?.code} • Terminal ${flight.terminal || 'T2'} • Gate ${flight.gate || '24B'}`;
+    if (elBoardTime) elBoardTime.textContent = `${times.boardingTime} IST`;
+
+    this.startDesktopBoardingCountdown(times.boardingTime, times.gateCloseTime);
+  }
+
+  startDesktopBoardingCountdown(boardingTimeStr, gateCloseTimeStr) {
+    if (this.boardingCountdownTimer) clearInterval(this.boardingCountdownTimer);
+
+    const elCountdown = document.getElementById('desktop-hud-countdown-text');
+    if (!elCountdown) return;
+
+    // Dynamic ticking countdown (for responsive desktop avionics display)
+    let secondsRemaining = 42 * 60 + 15; // 42 mins 15 secs simulation baseline
+    this.boardingCountdownTimer = setInterval(() => {
+      secondsRemaining--;
+      if (secondsRemaining <= 0) {
+        elCountdown.textContent = '● GATE OPEN — BOARDING ACTIVE (Zone 2)';
+        elCountdown.parentElement.style.background = 'rgba(255, 215, 0, 0.18)';
+        elCountdown.style.color = 'var(--fr24-yellow)';
+        return;
+      }
+      const mins = Math.floor(secondsRemaining / 60);
+      const secs = secondsRemaining % 60;
+      elCountdown.textContent = `Boarding starts in ${mins}m ${secs.toString().padStart(2, '0')}s`;
+    }, 1000);
+  }
+
+  renderSkyscannerResults() {
+    let pool = [...(this.skyscannerFlights.length > 0 ? this.skyscannerFlights : this.flights)];
+
+    // Apply stops filter
+    if (this.filters.stops !== 'all' && this.filters.stops !== undefined) {
+      const stopsNum = parseInt(this.filters.stops, 10);
+      pool = pool.filter(f => (f.stops || 0) === stopsNum);
+    }
+
+    // Apply time of day filter
+    if (this.filters.timeOfDay && this.filters.timeOfDay !== 'all') {
+      pool = pool.filter(f => {
+        const timeStr = f.departureTime || '';
+        const isPM = timeStr.includes('PM');
+        let hour = parseInt(timeStr.split(':')[0], 10) || 0;
+        if (isPM && hour !== 12) hour += 12;
+        if (!isPM && hour === 12) hour = 0;
+
+        if (this.filters.timeOfDay === 'morning') return hour >= 5 && hour < 12;
+        if (this.filters.timeOfDay === 'afternoon') return hour >= 12 && hour < 17;
+        if (this.filters.timeOfDay === 'evening') return hour >= 17 && hour < 22;
+        if (this.filters.timeOfDay === 'night') return hour >= 22 || hour < 5;
+        return true;
+      });
+    }
+
+    // Apply convenience score filter
+    if (this.filters.minConvenience) {
+      pool = pool.filter(f => (f.convenienceScore || 70) >= Number(this.filters.minConvenience));
+    }
+
+    // Apply amenities filter
+    if (this.filters.wifi) pool = pool.filter(f => f.amenities?.wifi === true);
+    if (this.filters.extraLegroom) pool = pool.filter(f => f.amenities?.extraLegroom === true);
+    if (this.filters.digiYatra) pool = pool.filter(f => f.amenities?.digiYatra === true);
+
+    // Apply Active Value Sort Tab
+    if (this.skyscannerState.activeSortTab === 'cheapest') {
+      pool.sort((a, b) => a.currentPrice - b.currentPrice);
+    } else if (this.skyscannerState.activeSortTab === 'best') {
+      pool.sort((a, b) => (b.convenienceScore || 0) - (a.convenienceScore || 0));
+    } else if (this.skyscannerState.activeSortTab === 'fastest') {
+      pool.sort((a, b) => (a.durationMinutes || 120) - (b.durationMinutes || 120));
+    }
+
+    // Update Value Sort Tabs Metrics
+    if (pool.length > 0) {
+      const cheapest = [...pool].sort((a, b) => a.currentPrice - b.currentPrice)[0];
+      const best = [...pool].sort((a, b) => (b.convenienceScore || 0) - (a.convenienceScore || 0))[0];
+      const fastest = [...pool].sort((a, b) => (a.durationMinutes || 120) - (b.durationMinutes || 120))[0];
+
+      const elMetricCheap = document.getElementById('tab-metric-cheapest');
+      const elMetricBest = document.getElementById('tab-metric-best');
+      const elMetricFast = document.getElementById('tab-metric-fastest');
+
+      if (elMetricCheap) elMetricCheap.textContent = `₹${this.calculateDiscountedPrice(cheapest.currentPrice).toLocaleString('en-IN')}`;
+      if (elMetricBest) elMetricBest.textContent = `${best.convenienceScore}/100`;
+      if (elMetricFast) elMetricFast.textContent = fastest.duration;
+
+      // Update Desktop Boarding HUD for top flight
+      this.updateDesktopBoardingHUD(pool[0]);
+    }
+
+    // Update Results Count Badge
+    const countBadge = document.getElementById('results-count-badge');
+    if (countBadge) {
+      countBadge.textContent = `${pool.length} Flights Available`;
+    }
+
+    this.renderSkyscannerFlightCards(pool);
+  }
+
+  renderSkyscannerFlightCards(flightsList) {
+    const container = document.getElementById('roster-cards-container');
+    if (!container) return;
+
+    if (!flightsList || flightsList.length === 0) {
+      container.innerHTML = `
+        <div style="background: rgba(13, 19, 38, 0.8); border: 1px solid var(--border-card); border-radius: 20px; padding: 48px; text-align: center;">
+          <div style="font-size: 38px; margin-bottom: 12px;">✈️</div>
+          <div style="font-family: var(--font-display); font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 6px;">
+            No flights match the current filter parameters
+          </div>
+          <p style="font-size: 13px; color: #94a3b8; max-width: 440px; margin: 0 auto 20px;">
+            Try relaxing your convenience threshold or clearing amenity filters to view all scheduled direct flights for this corridor.
+          </p>
+          <button type="button" class="btn-fr24-primary" style="margin: 0 auto;" onclick="window.aeroApp.resetRosterFilters()">
+            Reset All Filters
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = flightsList.map(f => {
+      const finalPrice = this.calculateDiscountedPrice(f.currentPrice);
+      const hasDiscount = finalPrice < f.currentPrice;
+      const times = this.calculateBoardingTimes(f.departureTime);
+      const isSelected = f.id === this.selectedFlight?.id;
+
+      return `
+        <article class="skyscanner-card ${isSelected ? 'active-selected' : ''}" id="card-flight-${f.id}">
+          <!-- Top Row: Airline, Flight No, Status -->
+          <div class="card-top-row">
+            <div class="card-airline-info">
+              <span class="airline-badge">${f.airlineCode || '6E'}</span>
+              <span style="font-family: var(--font-primary); font-size: 15px; font-weight: 700; color: #fff;">${f.airline}</span>
+              <span style="font-size: 12px; font-family: var(--font-mono); color: #94a3b8;">${f.flightNumber}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 11px; font-family: var(--font-mono); color: var(--emerald-accent); background: rgba(16,185,129,0.12); padding: 2px 8px; border-radius: 6px;">
+                ${f.status}
+              </span>
+              <span style="font-size: 11px; font-family: var(--font-mono); color: var(--cyan-primary); background: rgba(0,240,255,0.1); padding: 2px 8px; border-radius: 6px;">
+                Score: ${f.convenienceScore}/100
+              </span>
+            </div>
+          </div>
+
+          <!-- Middle Row: Timing, Duration Vector, Price -->
+          <div class="card-middle-row">
+            <!-- Departure -->
+            <div class="time-box">
+              <span class="flight-time-large">${f.departureTime}</span>
+              <span class="flight-airport-sub">${f.origin?.code} • ${f.origin?.city || 'Origin'}</span>
+            </div>
+
+            <!-- Duration Vector -->
+            <div class="flight-duration-vector">
+              <span style="font-size: 12px; font-family: var(--font-mono); color: #cbd5e1; font-weight: 600;">${f.duration}</span>
+              <div class="duration-line">
+                <div class="duration-dot"></div>
+              </div>
+              <span style="font-size: 10px; font-family: var(--font-mono); color: ${f.stops === 0 ? 'var(--emerald-accent)' : 'var(--amber-accent)'};">
+                ${f.stopDetails || (f.stops === 0 ? 'Direct Non-stop' : '1 Transit Stop')}
+              </span>
+            </div>
+
+            <!-- Arrival -->
+            <div class="time-box">
+              <span class="flight-time-large">${f.arrivalTime}</span>
+              <span class="flight-airport-sub">${f.destination?.code} • ${f.destination?.city || 'Destination'}</span>
+            </div>
+
+            <!-- Price Column -->
+            <div class="card-price-col">
+              <div class="card-price-val">₹${finalPrice.toLocaleString('en-IN')}</div>
+              ${hasDiscount ? `<div style="font-size: 11px; text-decoration: line-through; color: var(--rose-accent);">₹${f.currentPrice.toLocaleString('en-IN')}</div>` : ''}
+              <div style="font-size: 10px; color: #64748b;">Inclusive of all fees</div>
+            </div>
+          </div>
+
+          <!-- Prominent Desktop Screen Boarding Time Tag -->
+          <div class="card-desktop-boarding-tag">
+            <span>🛫</span>
+            <span><strong>Boarding Commences: ${times.boardingTime}</strong></span>
+            <span>•</span>
+            <span style="color: #cbd5e1;">Gate Closes: ${times.gateCloseTime} (Strict 20m Prior)</span>
+            <span>•</span>
+            <span>Gate ${f.gate || '24B'}</span>
+          </div>
+
+          <!-- Bottom Row: Amenities & Action Buttons -->
+          <div class="card-bottom-actions">
+            <div class="card-amenities-row">
+              ${f.amenities?.digiYatra ? `<span class="amenity-chip" style="color: var(--cyan-primary); border-color: rgba(0,240,255,0.25);">⚡ DigiYatra Fast-Track</span>` : ''}
+              ${f.amenities?.wifi ? `<span class="amenity-chip">📶 In-Flight Wi-Fi</span>` : ''}
+              ${f.amenities?.extraLegroom ? `<span class="amenity-chip">💺 Extra Legroom</span>` : ''}
+              <span class="amenity-chip">🧳 ${f.amenities?.baggage || '15kg Check-in'}</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button type="button" class="btn-fr24-ghost" style="padding: 7px 14px; font-size: 12px;" onclick="window.aeroApp.trackOnRadar('${f.id}')">
+                🛰️ Track on Radar
+              </button>
+              <button type="button" class="btn-fr24-primary" style="padding: 7px 18px; font-size: 12px;" onclick="window.aeroApp.openBoardingPass('${f.id}')">
+                Select & Boarding Pass
+              </button>
+            </div>
+          </div>
+        </article>
+      `;
+    }).join('');
+  }
+
+  resetRosterFilters() {
+    this.filters.stops = 'all';
+    this.filters.timeOfDay = 'all';
+    this.filters.minConvenience = 70;
+    this.filters.wifi = false;
+    this.filters.extraLegroom = false;
+    this.filters.digiYatra = false;
+
+    const stopsSel = document.getElementById('roster-stops');
+    if (stopsSel) stopsSel.value = 'all';
+    const timeSel = document.getElementById('roster-time');
+    if (timeSel) timeSel.value = 'all';
+    const convSlider = document.getElementById('roster-conv-slider');
+    if (convSlider) convSlider.value = 70;
+    const convVal = document.getElementById('roster-conv-val');
+    if (convVal) convVal.textContent = '70%+';
+
+    ['digiyatra', 'wifi', 'legroom'].forEach(amenity => {
+      const btn = document.getElementById(`btn-amenity-${amenity}`);
+      if (btn) btn.classList.remove('active');
+    });
+
+    if (window.aeroAudio) window.aeroAudio.playClick();
+    this.renderSkyscannerResults();
+  }
+
+  trackOnRadar(flightId) {
+    if (window.aeroAudio) window.aeroAudio.playClick();
+    sessionStorage.setItem('aerotrack_selected_flight', flightId);
+    const flight = this.flights.find(f => f.id === flightId) || this.skyscannerFlights.find(f => f.id === flightId);
+    if (flight && flight.origin && flight.destination) {
+      window.location.href = `index.html?flightId=${encodeURIComponent(flightId)}&origin=${encodeURIComponent(flight.origin.code)}&destination=${encodeURIComponent(flight.destination.code)}`;
+    } else {
+      window.location.href = `index.html?flightId=${encodeURIComponent(flightId)}`;
+    }
+  }
+
+  viewCorridorOnRadar() {
+    if (window.aeroAudio) window.aeroAudio.playClick();
+    const orig = this.skyscannerState.origin || 'DEL';
+    const dest = this.skyscannerState.destination || 'BOM';
+    window.location.href = `index.html?origin=${encodeURIComponent(orig)}&destination=${encodeURIComponent(dest)}`;
+  }
+
+  openSelectedBoardingPass() {
+    const flight = this.skyscannerFlights[0] || this.selectedFlight;
+    if (flight) this.openBoardingPass(flight.id);
   }
 
   /* ========================================================================
@@ -774,6 +1553,7 @@ class AeroApp {
     if (!modal || !content) return;
 
     const finalPrice = this.calculateDiscountedPrice(flight.currentPrice);
+    const times = this.calculateBoardingTimes(flight.departureTime);
 
     content.innerHTML = `
       <div style="background: linear-gradient(135deg, #070b16, #0d152a); border: 1px solid var(--border-card); border-radius: 20px; padding: 24px; color: #fff;">
@@ -783,32 +1563,57 @@ class AeroApp {
               ${flight.airline.toUpperCase()}
             </div>
             <div style="font-size: 12px; color: #94a3b8;">
-              ELECTRONIC BOARDING PASS • DGCA REGISTERED
+              ELECTRONIC BOARDING PASS • DGCA REGISTERED • BIOMETRIC DIGIYATRA
             </div>
           </div>
-          <div style="text-align: right; font-family: var(--font-mono); color: var(--emerald-accent); font-size: 22px; font-weight: 700;">
-            ₹${finalPrice.toLocaleString('en-IN')}
+          <div style="text-align: right;">
+            <div style="font-family: var(--font-mono); color: var(--emerald-accent); font-size: 22px; font-weight: 700;">
+              ₹${finalPrice.toLocaleString('en-IN')}
+            </div>
+            <div style="font-size: 11px; color: #94a3b8;">Confirmed Fare</div>
+          </div>
+        </div>
+
+        <!-- Prominent Desktop Screen Boarding Time Banner -->
+        <div style="background: rgba(255, 215, 0, 0.08); border: 1px solid rgba(255, 215, 0, 0.35); border-radius: 14px; padding: 14px 18px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <div style="font-size: 11px; font-family: var(--font-mono); color: var(--fr24-yellow); font-weight: 700; letter-spacing: 0.5px;">
+              🛫 BOARDING COMMENCES AT:
+            </div>
+            <div style="font-family: var(--font-display); font-size: 32px; font-weight: 800; color: #fff;">
+              ${times.boardingTime} IST
+            </div>
+            <div style="font-size: 11px; color: #cbd5e1;">(Gate opens 45 minutes before departure)</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 11px; font-family: var(--font-mono); color: var(--rose-accent); font-weight: 700;">
+              ⚠️ GATE CLOSES STRICTLY:
+            </div>
+            <div style="font-family: var(--font-display); font-size: 24px; font-weight: 800; color: var(--rose-accent);">
+              ${times.gateCloseTime} IST
+            </div>
+            <div style="font-size: 11px; color: #94a3b8;">No boarding permitted after cutoff</div>
           </div>
         </div>
 
         <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; margin-bottom: 20px;">
           <div>
             <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Flight Corridor</div>
-            <div style="font-family: var(--font-display); font-size: 28px; font-weight: 700;">
+            <div style="font-family: var(--font-display); font-size: 26px; font-weight: 700;">
               ${flight.origin?.code} ➔ ${flight.destination?.code}
             </div>
             <div style="font-size: 12px; color: #94a3b8;">${flight.origin?.city} to ${flight.destination?.city}</div>
           </div>
           <div>
             <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Flight No / Gate</div>
-            <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--cyan-primary);">
+            <div style="font-family: var(--font-mono); font-size: 20px; font-weight: 700; color: var(--cyan-primary);">
               ${flight.flightNumber}
             </div>
-            <div style="font-size: 12px; color: #94a3b8;">Gate ${flight.gate || '12A'}</div>
+            <div style="font-size: 12px; color: #94a3b8;">Gate ${flight.gate || '24B'} • Terminal ${flight.terminal || 'T2'}</div>
           </div>
           <div>
-            <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Departure</div>
-            <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--amber-accent);">
+            <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Departure Time</div>
+            <div style="font-family: var(--font-mono); font-size: 20px; font-weight: 700; color: var(--amber-accent);">
               ${flight.departureTime}
             </div>
             <div style="font-size: 12px; color: #94a3b8;">Duration: ${flight.duration}</div>
@@ -818,7 +1623,7 @@ class AeroApp {
         <div style="text-align: center; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 16px;">
           <div style="height: 44px; background: repeating-linear-gradient(90deg, #fff 0, #fff 2px, transparent 2px, transparent 6px, #fff 6px, #fff 10px); width: 85%; margin: 0 auto; opacity: 0.9;"></div>
           <div style="font-family: var(--font-mono); font-size: 10px; color: #64748b; margin-top: 6px;">
-            PNR# ${Math.random().toString(36).substring(2, 8).toUpperCase()} • BIOMETRIC DIGIYATRA COMPLIANT
+            PNR# ${Math.random().toString(36).substring(2, 8).toUpperCase()} • BIOMETRIC DIGIYATRA COMPLIANT • SEAT 14A (ZONE 2)
           </div>
         </div>
       </div>

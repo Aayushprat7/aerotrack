@@ -900,3 +900,914 @@ body {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ==========================================================================
+   Page Scrolling & Layout Container (for non-radar pages)
+   ========================================================================== */
+body.scrollable-page {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  min-height: 100vh;
+}
+
+.page-container {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 80px 24px 60px;
+  position: relative;
+  z-index: 10;
+}
+
+/* ==========================================================================
+   Skyscanner-Grade Flight Search Portal
+   ========================================================================== */
+.skyscanner-hero {
+  position: relative;
+  border-radius: 28px;
+  background: radial-gradient(ellipse at top center, rgba(0, 240, 255, 0.12) 0%, rgba(13, 19, 38, 0.75) 55%, rgba(5, 7, 14, 0.95) 100%);
+  border: 1px solid var(--border-card);
+  padding: 36px 36px 32px;
+  margin-bottom: 28px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(28px);
+}
+
+.skyscanner-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: rgba(0, 240, 255, 0.12);
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cyan-primary);
+  margin-bottom: 14px;
+  letter-spacing: 0.5px;
+}
+
+.skyscanner-hero-title {
+  font-family: var(--font-primary);
+  font-size: 38px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+  margin-bottom: 10px;
+}
+
+.skyscanner-hero-subtitle {
+  font-size: 15px;
+  color: #94a3b8;
+  max-width: 720px;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+/* Trip Type Selector */
+.trip-type-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.trip-type-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.trip-type-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.trip-type-pill.active {
+  background: rgba(0, 240, 255, 0.18);
+  border-color: var(--cyan-primary);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.25);
+}
+
+/* Search Box Container */
+.skyscanner-search-box {
+  background: rgba(8, 13, 26, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+}
+
+.skyscanner-inputs-grid {
+  display: grid;
+  grid-template-columns: 2fr auto 2fr 1.3fr 1.3fr 1.4fr;
+  gap: 10px;
+  align-items: center;
+}
+
+@media (max-width: 1024px) {
+  .skyscanner-inputs-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .skyscanner-inputs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.search-field-group {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 8px 14px;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.search-field-group:focus-within {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--cyan-primary);
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.2);
+}
+
+.field-label {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.field-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-iata-tag {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--fr24-yellow);
+  background: rgba(255, 215, 0, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.field-native-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-family: var(--font-primary);
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  padding: 4px 0;
+}
+
+.field-native-input option {
+  background: #0d152a;
+  color: #fff;
+}
+
+/* Route Swap Button */
+.route-swap-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--cyan-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all var(--transition-fast);
+}
+
+.route-swap-btn:hover {
+  background: rgba(0, 240, 255, 0.2);
+  border-color: var(--cyan-primary);
+  transform: rotate(180deg);
+}
+
+/* Search Actions Bar */
+.search-actions-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.direct-flights-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #cbd5e1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.direct-flights-toggle input[type="checkbox"] {
+  accent-color: var(--cyan-primary);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.btn-skyscanner-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 28px;
+  background: linear-gradient(135deg, #00f0ff, #0284c7);
+  border: none;
+  border-radius: 14px;
+  color: #030712;
+  font-family: var(--font-primary);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 0 25px rgba(0, 240, 255, 0.4);
+  transition: all var(--transition-fast);
+}
+
+.btn-skyscanner-search:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 35px rgba(0, 240, 255, 0.6);
+  filter: brightness(1.1);
+}
+
+/* Popular Routes Quick Bar */
+.popular-corridors-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.popular-corridor-pill {
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.popular-corridor-pill:hover {
+  background: rgba(255, 215, 0, 0.12);
+  border-color: rgba(255, 215, 0, 0.4);
+  color: var(--fr24-yellow);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   Desktop Screen Boarding Time HUD Widget
+   ========================================================================== */
+.desktop-boarding-hud {
+  display: none;
+  background: linear-gradient(135deg, rgba(7, 12, 28, 0.95), rgba(13, 22, 48, 0.95));
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  border-radius: 20px;
+  padding: 18px 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.8), 0 0 25px rgba(0, 240, 255, 0.15);
+  backdrop-filter: blur(20px);
+  position: relative;
+  overflow: hidden;
+}
+
+.desktop-boarding-hud::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(to bottom, var(--cyan-primary), var(--emerald-accent));
+}
+
+@media (min-width: 1024px) {
+  .desktop-boarding-hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
+}
+
+.boarding-hud-flight-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.boarding-hud-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(0, 240, 255, 0.12);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: var(--cyan-primary);
+}
+
+.boarding-hud-flight-no {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.boarding-hud-corridor {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.boarding-hud-center-clock {
+  text-align: center;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 10px 24px;
+}
+
+.boarding-hud-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cyan-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.boarding-hud-time {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.boarding-countdown-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--emerald-accent);
+  background: rgba(16, 185, 129, 0.12);
+  padding: 2px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  margin-top: 4px;
+}
+
+.boarding-hud-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepper-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stepper-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.stepper-step.completed .stepper-dot {
+  background: var(--emerald-accent);
+  box-shadow: 0 0 8px var(--emerald-accent);
+}
+
+.stepper-step.active .stepper-dot {
+  background: var(--fr24-yellow);
+  box-shadow: 0 0 10px var(--fr24-yellow);
+  animation: beaconPulse 2s infinite ease-out;
+}
+
+.stepper-line {
+  width: 28px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.stepper-line.filled {
+  background: var(--emerald-accent);
+}
+
+.stepper-text {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.stepper-step.active .stepper-text {
+  color: var(--fr24-yellow);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   7-Day Dynamic Fare Strip (Skyscanner Style)
+   ========================================================================== */
+.fare-date-strip-container {
+  margin-bottom: 20px;
+  background: rgba(11, 16, 32, 0.6);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  padding: 12px;
+}
+
+.fare-date-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.fare-date-pill {
+  flex: 1;
+  min-width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.fare-date-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
+}
+
+.fare-date-pill.active {
+  background: rgba(0, 240, 255, 0.12);
+  border-color: var(--cyan-primary);
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.25);
+}
+
+.fare-date-day {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: #94a3b8;
+}
+
+.fare-date-num {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  margin: 2px 0;
+}
+
+.fare-date-price {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--emerald-accent);
+}
+
+/* ==========================================================================
+   Skyscanner Value Sort Tabs
+   ========================================================================== */
+.skyscanner-sort-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.sort-tab-card {
+  background: rgba(14, 20, 40, 0.7);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 14px 18px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sort-tab-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.sort-tab-card.active {
+  background: rgba(0, 240, 255, 0.1);
+  border-color: var(--cyan-primary);
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.25);
+}
+
+.sort-tab-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.sort-tab-sub {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.sort-tab-metric {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--emerald-accent);
+  text-align: right;
+}
+
+/* ==========================================================================
+   Results Layout Grid & Skyscanner Flight Cards
+   ========================================================================== */
+.skyscanner-results-layout {
+  display: grid;
+  grid-template-columns: 290px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .skyscanner-results-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.skyscanner-filters-sidebar {
+  background: rgba(10, 15, 30, 0.85);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(20px);
+}
+
+.sidebar-section {
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-section:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.sidebar-title {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+/* Flight Cards List */
+.skyscanner-card {
+  background: rgba(13, 19, 38, 0.75);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  padding: 22px 26px;
+  margin-bottom: 16px;
+  transition: all var(--transition-fast);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.skyscanner-card:hover {
+  background: rgba(18, 26, 52, 0.9);
+  border-color: rgba(0, 240, 255, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.75), 0 0 20px rgba(0, 240, 255, 0.15);
+}
+
+.skyscanner-card.active-selected {
+  border-color: var(--cyan-primary);
+  background: rgba(0, 240, 255, 0.06);
+}
+
+.card-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.card-airline-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.airline-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  color: var(--fr24-yellow);
+}
+
+.card-middle-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr 1.3fr;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 640px) {
+  .card-middle-row {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+}
+
+.time-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.flight-time-large {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+}
+
+.flight-airport-sub {
+  font-size: 13px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.flight-duration-vector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 130px;
+}
+
+.duration-line {
+  position: relative;
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.duration-dot {
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cyan-primary);
+  box-shadow: 0 0 8px var(--cyan-primary);
+}
+
+.card-price-col {
+  text-align: right;
+}
+
+.card-price-val {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--emerald-accent);
+}
+
+.card-desktop-boarding-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 215, 0, 0.08);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: #fde047;
+  margin-bottom: 14px;
+}
+
+.card-bottom-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.card-amenities-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.amenity-chip {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.search-summary-banner {
+  background: rgba(8, 13, 26, 0.85);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.summary-route-text {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.summary-meta-text {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.btn-modify-search {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-modify-search:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--cyan-primary);
+  color: var(--cyan-primary);
+}
+
+/* ==========================================================================
+   Radar Focused Route & Declutter HUD Banner
+   ========================================================================== */
+.radar-focus-banner {
+  position: absolute;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 990;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: rgba(10, 16, 26, 0.92);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 240, 255, 0.2);
+  border-radius: 9999px;
+  padding: 8px 18px;
+  color: #fff;
+  font-family: var(--font-primary);
+  font-size: 13px;
+  transition: all 0.3s ease;
+  pointer-events: auto;
+}
+
+.radar-focus-banner.all-airspace {
+  border-color: rgba(255, 215, 0, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 215, 0, 0.2);
+}
+
+.focus-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.focus-pulse-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--cyan-primary);
+  box-shadow: 0 0 10px var(--cyan-primary);
+  animation: pulse-ring 1.8s infinite;
+}
+
+.focus-pulse-dot.amber {
+  background: var(--fr24-yellow);
+  box-shadow: 0 0 10px var(--fr24-yellow);
+}
+
+.focus-title {
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  font-size: 12.5px;
+}
+
+.btn-focus-toggle {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  padding: 5px 14px;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.btn-focus-toggle:hover {
+  background: rgba(0, 240, 255, 0.18);
+  border-color: var(--cyan-primary);
+  color: var(--cyan-primary);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
+}
+
+.fr24-nav-btn.nav-report-highlight {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(168, 85, 247, 0.15));
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  color: #00f0ff !important;
+  font-weight: 600;
+}
+
+.fr24-nav-btn.nav-report-highlight:hover {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.25), rgba(168, 85, 247, 0.25));
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.4);
+}
+

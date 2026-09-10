@@ -3,147 +3,399 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AeroTrack — Flight Roster & Booking Matrix</title>
+  <title>AeroTrack — Flight Discovery, Skyscanner Search & Price Intelligence</title>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Rajdhani:wght@600;700;800&display=swap" rel="stylesheet">
 
-  <!-- AeroTrack Apple Spatial Stylesheet -->
+  <!-- AeroTrack Aerospace Design System -->
   <link rel="stylesheet" href="/css/style.css" />
 </head>
-<body>
+<body class="scrollable-page">
 
   <!-- ========================================================================
-       Apple-Style Floating Navigation Dock
+       TOP AEROSPACE COMMAND & NAVIGATION BAR
        ======================================================================== -->
-  <nav class="apple-nav-dock">
-    <a href="index.html" class="dock-brand">
-      <span class="dock-brand-logo">✈️</span>
-      <span class="dock-brand-text">AEROTRACK</span>
+  <header class="fr24-header">
+    <a href="index.html" class="fr24-brand" style="text-decoration: none;">
+      <div class="fr24-brand-icon">✈️</div>
+      <div class="fr24-brand-text">AERO<span>TRACK</span></div>
     </a>
 
-    <div class="dock-links">
-      <a href="index.html" class="dock-link" data-page="radar">
-        <span>Radar Cockpit</span>
-        <span class="dock-key-hint">1</span>
-      </a>
-      <a href="flights.html" class="dock-link active" data-page="flights">
-        <span>Flight Roster</span>
-        <span class="dock-key-hint">2</span>
-      </a>
-      <a href="prices.html" class="dock-link" data-page="prices">
-        <span>Price Intel</span>
-        <span class="dock-key-hint">3</span>
-      </a>
-      <a href="deals.html" class="dock-link" data-page="deals">
-        <span>Deals & Picks</span>
-        <span class="dock-key-hint">4</span>
-      </a>
-      <a href="fleet.html" class="dock-link" data-page="fleet">
-        <span>Fleet Ops</span>
-        <span class="dock-key-hint">5</span>
-      </a>
+    <!-- Integrated Search Input -->
+    <div class="fr24-search-box">
+      <span class="fr24-search-icon">🔍</span>
+      <input type="text" id="global-flight-search" class="fr24-search-input" placeholder="Search airline, flight, city (DEL, BOM, AI-804)..." />
+      <span class="fr24-search-hint">/</span>
     </div>
 
-    <div class="dock-actions">
-      <div id="dock-tracked-count" style="font-family: var(--font-mono); font-size: 11px; color: var(--cyan-primary); padding: 0 6px;">
-        AIRBORNE
+    <!-- Main Navigation Tabs -->
+    <nav class="fr24-nav-tabs">
+      <a href="index.html" class="fr24-nav-btn" style="text-decoration: none;">
+        <span>🛰️ Radar</span>
+      </a>
+      <a href="flights.html" class="fr24-nav-btn active" style="text-decoration: none;">
+        <span>📋 Flights</span>
+      </a>
+      <a href="prices.html" class="fr24-nav-btn" style="text-decoration: none;">
+        <span>📈 Price AI</span>
+      </a>
+      <a href="deals.html" class="fr24-nav-btn" style="text-decoration: none;">
+        <span>🎁 Deals</span>
+      </a>
+      <a href="fleet.html" class="fr24-nav-btn" style="text-decoration: none;">
+        <span>⚙️ Fleet</span>
+      </a>
+      <a href="report.html" class="fr24-nav-btn nav-report-highlight" style="text-decoration: none;" title="Comprehensive Academic & Research Specifications Report for Project Head">
+        <span>📑 Project Report</span>
+      </a>
+    </nav>
+
+    <!-- Right Controls -->
+    <div class="fr24-controls">
+      <div id="fr24-airborne-ticker" class="fr24-status-ticker" title="Live ADS-B tracking via OpenSky Network">
+        <span style="color: var(--emerald-accent); font-size: 8px;">●</span> <span id="fr24-airborne-count">240 LIVE ADS-B</span>
       </div>
-      <button id="dock-audio-btn" class="dock-btn" title="Toggle Spatial Audio (Key: M)">
-        🔊 <span class="dock-key-hint">M</span>
+      <button id="fr24-audio-toggle" class="fr24-icon-btn" title="Toggle Spatial Audio (M)">
+        🔊
       </button>
-      <a href="deals.html" class="dock-btn dock-btn-cyan">
+      <a href="deals.html" class="btn-fr24-primary" style="text-decoration: none; padding: 6px 14px; font-size: 12px;">
         Explore Deals
       </a>
     </div>
-  </nav>
+  </header>
 
   <!-- ========================================================================
-       Main Content Container
+       MAIN FLIGHT SEARCH CONTAINER
        ======================================================================== -->
   <main class="page-container">
 
-    <!-- Hero Header -->
-    <header class="page-hero">
-      <div class="hero-tag">FLIGHT INTELLIGENCE • ALL AIRLINES</div>
-      <h1 class="hero-title">Aviation Corridors & Roster</h1>
-      <p class="hero-subtitle">
-        Inspect live domestic and international air corridors. Real-time convenience scoring balances direct timing, DigiYatra fast-track privileges, and competitive rupee fares.
+    <!-- 1. SKYSCANNER FIRST INTERFACE: HERO SEARCH CONSOLE -->
+    <section class="skyscanner-hero" id="skyscanner-search-section">
+      <div class="skyscanner-hero-badge">
+        <span>⚡ AEROTRACK • SKYSCANNER-GRADE FLIGHT DISCOVERY & RADAR TELEMETRY</span>
+      </div>
+      <h1 class="skyscanner-hero-title">Where will you fly next?</h1>
+      <p class="skyscanner-hero-subtitle">
+        Search live commercial corridors across India and global gateways. Transparent convenience scoring balances direct timing, DigiYatra fast-track privileges, and predictive AI price forecasts.
       </p>
-    </header>
 
-    <!-- Sector Quick Switcher -->
-    <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
-      <button class="amenity-toggle-chip sector-pill-btn active" data-type="all">All Corridors</button>
-      <button class="amenity-toggle-chip sector-pill-btn" data-type="domestic">🇮🇳 Domestic Hubs (DEL, BOM, BLR, GOI, HYD)</button>
-      <button class="amenity-toggle-chip sector-pill-btn" data-type="international">🌐 International Corridors (DXB, JFK, SFO, LHR)</button>
-    </div>
-
-    <!-- Search & Filter Bar -->
-    <section class="filter-search-container">
-      <div class="cyber-search-box">
-        <i>🔍</i>
-        <input type="text" id="roster-search" placeholder="Search flight number, airline, or city (e.g. 6E-2041, Delhi, Mumbai, Akasa)..." />
+      <!-- Trip Type Selector -->
+      <div class="trip-type-row">
+        <button type="button" class="trip-type-pill active" id="pill-trip-oneway" onclick="window.aeroApp.setTripType('oneway')">
+          <span>●</span> One way
+        </button>
+        <button type="button" class="trip-type-pill" id="pill-trip-round" onclick="window.aeroApp.setTripType('round')">
+          <span>○</span> Round trip
+        </button>
+        <span style="font-size: 11px; font-family: var(--font-mono); color: var(--emerald-accent); margin-left: 8px;">
+          ✓ Live Transponder Verified
+        </span>
       </div>
 
-      <div>
-        <select id="roster-stops" class="cyber-select-dropdown" style="width: 100%;">
-          <option value="all">Stops: Any</option>
-          <option value="0">Direct Non-Stop Only</option>
-          <option value="1">1 Stop Transit</option>
-        </select>
-      </div>
+      <!-- Main Search Card -->
+      <form class="skyscanner-search-box" id="skyscanner-search-form">
+        <div class="skyscanner-inputs-grid">
+          
+          <!-- Origin Input -->
+          <div class="search-field-group">
+            <span class="field-label">From (Departure)</span>
+            <div class="field-input-wrapper">
+              <span class="field-iata-tag" id="iata-badge-origin">DEL</span>
+              <select id="search-origin" class="field-native-input" required>
+                <option value="DEL" selected>New Delhi (DEL) — Indira Gandhi Intl</option>
+                <option value="BOM">Mumbai (BOM) — Chhatrapati Shivaji</option>
+                <option value="BLR">Bengaluru (BLR) — Kempegowda Intl</option>
+                <option value="HYD">Hyderabad (HYD) — Rajiv Gandhi Intl</option>
+                <option value="MAA">Chennai (MAA) — Chennai International</option>
+                <option value="CCU">Kolkata (CCU) — Netaji Subhash Chandra</option>
+                <option value="GOI">Goa (GOI) — Dabolim / Mopa</option>
+                <option value="DXB">Dubai (DXB) — Dubai International</option>
+                <option value="LHR">London (LHR) — Heathrow Airport</option>
+                <option value="JFK">New York (JFK) — John F. Kennedy</option>
+                <option value="SIN">Singapore (SIN) — Changi International</option>
+              </select>
+            </div>
+          </div>
 
-      <div>
-        <select id="roster-time" class="cyber-select-dropdown" style="width: 100%;">
-          <option value="all">Departure: Any Time</option>
-          <option value="morning">Morning (05:00 - 12:00)</option>
-          <option value="afternoon">Afternoon (12:00 - 17:00)</option>
-          <option value="evening">Evening (17:00 - 22:00)</option>
-          <option value="night">Night / Red-Eye</option>
-        </select>
-      </div>
+          <!-- Swap Route Button -->
+          <button type="button" class="route-swap-btn" id="btn-swap-route" title="Swap Origin and Destination" onclick="window.aeroApp.swapOriginDestination()">
+            ⇄
+          </button>
 
-      <div>
-        <select id="roster-sort" class="cyber-select-dropdown" style="width: 100%;">
-          <option value="convenience">Sort: Highest Convenience</option>
-          <option value="price-low">Sort: Lowest Price (₹)</option>
-          <option value="duration">Sort: Quickest Flight Time</option>
-          <option value="rating">Sort: Airline Rating</option>
-        </select>
+          <!-- Destination Input -->
+          <div class="search-field-group">
+            <span class="field-label">To (Destination)</span>
+            <div class="field-input-wrapper">
+              <span class="field-iata-tag" id="iata-badge-dest">BOM</span>
+              <select id="search-destination" class="field-native-input" required>
+                <option value="BOM" selected>Mumbai (BOM) — Chhatrapati Shivaji</option>
+                <option value="DEL">New Delhi (DEL) — Indira Gandhi Intl</option>
+                <option value="BLR">Bengaluru (BLR) — Kempegowda Intl</option>
+                <option value="HYD">Hyderabad (HYD) — Rajiv Gandhi Intl</option>
+                <option value="GOI">Goa (GOI) — Dabolim / Mopa</option>
+                <option value="MAA">Chennai (MAA) — Chennai International</option>
+                <option value="CCU">Kolkata (CCU) — Netaji Subhash Chandra</option>
+                <option value="DXB">Dubai (DXB) — Dubai International</option>
+                <option value="LHR">London (LHR) — Heathrow Airport</option>
+                <option value="JFK">New York (JFK) — John F. Kennedy</option>
+                <option value="SIN">Singapore (SIN) — Changi International</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Depart Date -->
+          <div class="search-field-group">
+            <span class="field-label">Depart Date</span>
+            <div class="field-input-wrapper">
+              <input type="date" id="search-date-depart" class="field-native-input" required />
+            </div>
+          </div>
+
+          <!-- Return Date (Optional) -->
+          <div class="search-field-group" id="group-date-return" style="opacity: 0.5;">
+            <span class="field-label">Return Date</span>
+            <div class="field-input-wrapper">
+              <input type="date" id="search-date-return" class="field-native-input" disabled />
+            </div>
+          </div>
+
+          <!-- Travelers & Class -->
+          <div class="search-field-group">
+            <span class="field-label">Cabin & Travelers</span>
+            <div class="field-input-wrapper">
+              <select id="search-cabin-class" class="field-native-input">
+                <option value="1-economy">1 Adult, Economy</option>
+                <option value="2-economy">2 Adults, Economy</option>
+                <option value="1-business">1 Adult, Business Class</option>
+                <option value="family">Family (2 Adults, 2 Children)</option>
+              </select>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Search Actions Bottom Bar -->
+        <div class="search-actions-bar">
+          <label class="direct-flights-toggle">
+            <input type="checkbox" id="search-direct-only" checked />
+            <span>Direct non-stop flights only</span>
+          </label>
+
+          <button type="submit" class="btn-skyscanner-search">
+            <span>Search Flights</span>
+            <span>➔</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Popular Corridor Quick Pills -->
+      <div class="popular-corridors-bar">
+        <span style="font-size: 11px; font-family: var(--font-mono); color: #64748b; text-transform: uppercase;">Trending Routes:</span>
+        <button class="popular-corridor-pill" onclick="window.aeroApp.quickSelectCorridor('DEL', 'BOM')">DEL ➔ BOM (Mumbai)</button>
+        <button class="popular-corridor-pill" onclick="window.aeroApp.quickSelectCorridor('BLR', 'DEL')">BLR ➔ DEL (Delhi)</button>
+        <button class="popular-corridor-pill" onclick="window.aeroApp.quickSelectCorridor('DEL', 'DXB')">DEL ➔ DXB (Dubai)</button>
+        <button class="popular-corridor-pill" onclick="window.aeroApp.quickSelectCorridor('BOM', 'GOI')">BOM ➔ GOI (Goa)</button>
+        <button class="popular-corridor-pill" onclick="window.aeroApp.quickSelectCorridor('DEL', 'LHR')">DEL ➔ LHR (London)</button>
+        <button class="popular-corridor-pill" onclick="window.aeroApp.quickSelectCorridor('HYD', 'BLR')">HYD ➔ BLR (Bengaluru)</button>
       </div>
     </section>
 
-    <!-- Sub-Filters: Amenities & Convenience Slider -->
-    <section class="sub-filter-bar">
-      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-        <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim);">AMENITIES:</span>
-        <button id="btn-amenity-digiyatra" class="amenity-toggle-chip">⚡ DigiYatra Fast-Track</button>
-        <button id="btn-amenity-wifi" class="amenity-toggle-chip">📶 In-Flight Wi-Fi</button>
-        <button id="btn-amenity-legroom" class="amenity-toggle-chip">💺 Extra Legroom</button>
+    <!-- 2. DESKTOP SCREEN BOARDING TIME HUD WIDGET -->
+    <!-- Prominently displayed on desktop screens for high-volume travelers -->
+    <aside class="desktop-boarding-hud" id="desktop-boarding-hud">
+      <div class="boarding-hud-flight-meta">
+        <div class="boarding-hud-icon">🛫</div>
+        <div>
+          <div style="font-size: 10px; font-family: var(--font-mono); color: var(--cyan-primary); text-transform: uppercase;">ACTIVE BOARDING RADAR</div>
+          <div class="boarding-hud-flight-no" id="desktop-hud-flight-num">6E-2041</div>
+          <div class="boarding-hud-corridor" id="desktop-hud-corridor">DEL ➔ BOM • Terminal T2 • Gate 24B</div>
+        </div>
       </div>
 
-      <div class="slider-widget">
-        <label for="roster-conv-slider" style="color: var(--text-muted);">Min Convenience Index:</label>
-        <input type="range" id="roster-conv-slider" min="50" max="98" value="70" step="2" />
-        <span id="roster-conv-val" style="color: var(--cyan-primary); font-weight: 700; width: 45px;">70%+</span>
+      <!-- Center Clock with Live Countdown -->
+      <div class="boarding-hud-center-clock">
+        <div class="boarding-hud-label">ESTIMATED BOARDING COMMENCEMENT</div>
+        <div class="boarding-hud-time" id="desktop-hud-boarding-time">06:15 AM IST</div>
+        <div class="boarding-countdown-pill" id="desktop-hud-countdown">
+          <span>⏱</span> <span id="desktop-hud-countdown-text">Boarding starts in 42m 15s</span>
+        </div>
+      </div>
+
+      <!-- Multi-Stage Boarding Stepper -->
+      <div class="boarding-hud-stepper">
+        <div class="stepper-step completed">
+          <div class="stepper-dot"></div>
+          <span class="stepper-text">Check-in</span>
+        </div>
+        <div class="stepper-line filled"></div>
+        <div class="stepper-step completed">
+          <div class="stepper-dot"></div>
+          <span class="stepper-text">Security</span>
+        </div>
+        <div class="stepper-line filled"></div>
+        <div class="stepper-step active">
+          <div class="stepper-dot"></div>
+          <span class="stepper-text">Boarding</span>
+        </div>
+        <div class="stepper-line"></div>
+        <div class="stepper-step">
+          <div class="stepper-dot"></div>
+          <span class="stepper-text">Gate Close</span>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div>
+        <button class="btn-fr24-primary" onclick="window.aeroApp.openSelectedBoardingPass()" style="padding: 8px 16px; font-size: 12px;">
+          View Pass
+        </button>
+      </div>
+    </aside>
+
+    <!-- 3. SKYSCANNER SEARCH RESULTS VIEW (Visible after search / route selection) -->
+    <section id="skyscanner-results-view">
+      
+      <!-- Search Summary Bar -->
+      <div class="search-summary-banner">
+        <div>
+          <div class="summary-route-text" id="summary-route-text">New Delhi (DEL) ➔ Mumbai (BOM)</div>
+          <div class="summary-meta-text" id="summary-meta-text">Tomorrow • 1 Adult • Economy Class • Non-Stop Priority</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span id="results-count-badge" style="font-family: var(--font-mono); font-size: 12px; color: var(--cyan-primary); background: rgba(0,240,255,0.1); padding: 4px 10px; border-radius: 6px;">
+            12 Flights Found
+          </span>
+          <button type="button" class="btn-modify-search" onclick="window.aeroApp.viewCorridorOnRadar()" style="border-color: rgba(0,240,255,0.4); color: var(--cyan-primary);">
+            🛰️ View on Radar
+          </button>
+          <button type="button" class="btn-modify-search" onclick="window.aeroApp.toggleSearchHero()">
+            ✏️ Modify Search
+          </button>
+        </div>
+      </div>
+
+      <!-- 7-Day Dynamic Fare Carousel Strip (Skyscanner Signature Feature) -->
+      <div class="fare-date-strip-container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 0 4px;">
+          <span style="font-size: 11px; font-family: var(--font-mono); color: #94a3b8; text-transform: uppercase;">
+            📅 7-DAY PRICE MATRIX — DYNAMIC RUPEE FORECAST
+          </span>
+          <span style="font-size: 11px; font-family: var(--font-mono); color: var(--emerald-accent);">
+            ● Best Fare Highlighted
+          </span>
+        </div>
+        <div class="fare-date-strip" id="fare-date-strip">
+          <!-- Populated dynamically with 7 day pills around selected date -->
+        </div>
+      </div>
+
+      <!-- Skyscanner Value Sort Tabs: Cheapest, Best, Fastest -->
+      <div class="skyscanner-sort-tabs">
+        <div class="sort-tab-card active" id="tab-sort-cheapest" onclick="window.aeroApp.setSortTab('cheapest')">
+          <div>
+            <div class="sort-tab-title">🏷️ CHEAPEST</div>
+            <div class="sort-tab-sub">Lowest ticket fare across carriers</div>
+          </div>
+          <div class="sort-tab-metric" id="tab-metric-cheapest">₹4,150</div>
+        </div>
+
+        <div class="sort-tab-card" id="tab-sort-best" onclick="window.aeroApp.setSortTab('best')">
+          <div>
+            <div class="sort-tab-title">⭐ BEST / RECOMMENDED</div>
+            <div class="sort-tab-sub">Optimal convenience, speed & price</div>
+          </div>
+          <div class="sort-tab-metric" id="tab-metric-best" style="color: var(--cyan-primary);">94 Score</div>
+        </div>
+
+        <div class="sort-tab-card" id="tab-sort-fastest" onclick="window.aeroApp.setSortTab('fastest')">
+          <div>
+            <div class="sort-tab-title">⚡ FASTEST</div>
+            <div class="sort-tab-sub">Shortest non-stop corridor time</div>
+          </div>
+          <div class="sort-tab-metric" id="tab-metric-fastest" style="color: var(--fr24-yellow);">2h 10m</div>
+        </div>
+      </div>
+
+      <!-- Two-Column Results Layout: Sidebar Filters + Flight Cards -->
+      <div class="skyscanner-results-layout">
+        
+        <!-- Left Filter Sidebar -->
+        <aside class="skyscanner-filters-sidebar">
+          
+          <!-- Filter: Stops -->
+          <div class="sidebar-section">
+            <div class="sidebar-title">Flight Stops</div>
+            <select id="roster-stops" class="fr24-search-input" style="width: 100%; padding: 8px 12px; cursor: pointer;">
+              <option value="all">Any Stops</option>
+              <option value="0" selected>Direct Non-Stop Only</option>
+              <option value="1">1 Stop Transit</option>
+            </select>
+          </div>
+
+          <!-- Filter: Departure Time -->
+          <div class="sidebar-section">
+            <div class="sidebar-title">Departure Time Window</div>
+            <select id="roster-time" class="fr24-search-input" style="width: 100%; padding: 8px 12px; cursor: pointer;">
+              <option value="all">Any Departure Time</option>
+              <option value="morning">Morning (05:00 - 12:00)</option>
+              <option value="afternoon">Afternoon (12:00 - 17:00)</option>
+              <option value="evening">Evening (17:00 - 22:00)</option>
+              <option value="night">Night / Red-Eye (22:00 - 05:00)</option>
+            </select>
+          </div>
+
+          <!-- Filter: Convenience Slider -->
+          <div class="sidebar-section">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+              <span class="sidebar-title" style="margin-bottom: 0;">Min Convenience:</span>
+              <span id="roster-conv-val" style="color: var(--cyan-primary); font-family: var(--font-mono); font-weight: 700;">70%+</span>
+            </div>
+            <input type="range" id="roster-conv-slider" min="50" max="98" value="70" step="2" style="width: 100%; accent-color: var(--cyan-primary); cursor: pointer;" />
+          </div>
+
+          <!-- Filter: Amenities -->
+          <div class="sidebar-section">
+            <div class="sidebar-title">Aviation Amenities</div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <button type="button" id="btn-amenity-digiyatra" class="layer-btn" style="text-align: left; padding: 6px 12px;">
+                ⚡ DigiYatra Fast-Track
+              </button>
+              <button type="button" id="btn-amenity-wifi" class="layer-btn" style="text-align: left; padding: 6px 12px;">
+                📶 In-Flight High-Speed Wi-Fi
+              </button>
+              <button type="button" id="btn-amenity-legroom" class="layer-btn" style="text-align: left; padding: 6px 12px;">
+                💺 Extra Legroom Seat
+              </button>
+            </div>
+          </div>
+
+          <!-- Reset Button -->
+          <button type="button" class="btn-fr24-ghost" style="width: 100%;" onclick="window.aeroApp.resetRosterFilters()">
+            ↺ Reset All Filters
+          </button>
+        </aside>
+
+        <!-- Right Main Column: Flight Cards Grid -->
+        <section class="skyscanner-cards-container" id="roster-cards-container">
+          <!-- Populated dynamically by AeroApp.renderSkyscannerFlightCards() -->
+        </section>
+
       </div>
     </section>
 
-    <!-- Flights Grid / List -->
-    <section id="roster-cards-container" class="flights-grid-list">
-      <!-- Populated dynamically by AeroApp -->
-    </section>
   </main>
 
-  <!-- Digital Boarding Pass Modal -->
+  <!-- ========================================================================
+       DIGITAL BOARDING PASS MODAL
+       ======================================================================== -->
   <div id="modal-boarding-pass" class="cyber-modal-backdrop">
     <div class="cyber-modal-window" style="max-width: 680px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-        <span style="font-family: var(--font-display); font-size: 18px; font-weight: 700; color: #fff;">FLIGHT PASS PREVIEW</span>
-        <button onclick="document.getElementById('modal-boarding-pass').classList.remove('active')" style="background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;">✕</button>
+        <span style="font-family: var(--font-display); font-size: 20px; font-weight: 700; color: #fff;">DGCA ELECTRONIC BOARDING PASS</span>
+        <button onclick="document.getElementById('modal-boarding-pass').classList.remove('active')" style="background: none; border: none; color: #fff; font-size: 22px; cursor: pointer;">✕</button>
       </div>
       <div id="boarding-pass-modal-content"></div>
     </div>

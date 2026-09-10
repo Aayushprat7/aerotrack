@@ -52,6 +52,9 @@
       <button class="fr24-nav-btn" data-drawer="fleet" onclick="window.aeroApp.openDrawer('fleet')">
         <span>⚙️ Fleet</span>
       </button>
+      <a href="/report.html" class="fr24-nav-btn nav-report-highlight" style="text-decoration: none;" title="Comprehensive Academic & Research Specifications Report for Project Head">
+        <span>📑 Project Report</span>
+      </a>
     </nav>
 
     <!-- Right Controls: Map Layers, Status Ticker & Audio -->
@@ -81,6 +84,15 @@
   <main class="fr24-map-container">
     <div id="flight-radar-map"></div>
     <canvas id="radar-sweep-canvas" class="fr24-canvas-overlay"></canvas>
+
+    <!-- Floating Radar Focus Mode HUD Banner -->
+    <div id="radar-focus-banner" class="radar-focus-banner">
+      <div class="focus-banner-left">
+        <span class="focus-pulse-dot"></span>
+        <span class="focus-title">FOCUSED TRAVEL: <strong style="color: #00f0ff;">DEL ➔ BOM</strong> &bull; (Isolating suitable flights)</span>
+      </div>
+      <button class="btn-focus-toggle" onclick="window.aeroApp.showAllAirspace()">🌐 Show All Airspace</button>
+    </div>
   </main>
 
   <!-- ========================================================================
